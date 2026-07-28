@@ -112,9 +112,11 @@ def total_of(d):
 
 def collect(projects_root, project_filter, include_nested, since, until, tz):
     by_conv, by_proj, by_skill, by_day = {}, defaultdict(zero), defaultdict(zero), defaultdict(zero)
+    by_agent = defaultdict(zero)                       # who did the work: (main thread) + each subagent type
+    conv_day = defaultdict(lambda: defaultdict(zero))  # per-conversation daily breakdown (session -> day -> tokens)
     conv_meta = {}
     grand = zero()
-    stats = {"files": 0, "skipped_no_ts": 0, "skipped_out_window": 0}
+    stats = {"files": 0, "nested_files": 0, "skipped_no_ts": 0, "skipped_out_window": 0}
 
     for dirpath, _dirs, files in os.walk(projects_root):
         for name in files:
@@ -122,18 +124,25 @@ def collect(projects_root, project_filter, include_nested, since, until, tz):
                 continue
             full = os.path.join(dirpath, name)
             posix = full.replace(os.sep, "/")
-            if not include_nested and ("/subagents/" in posix or "/workflows/" in posix):
-                continue
+            nested = ("/subagents/" in posix or "/workflows/" in posix)
             proj_dir = os.path.relpath(dirpath, projects_root)
             if project_filter != "all" and project_filter not in proj_dir:
                 continue
-            stats["files"] += 1
-            _read_file(full, by_conv, conv_meta, by_proj, by_skill, by_day, grand, since, until, tz, stats)
+            # nested files are ALWAYS read (for the By-agent lens), but only feed the standard
+            # conversation/project/skill/day lenses when --include-nested is set.
+            if nested and not include_nested:
+                stats["nested_files"] += 1
+            else:
+                stats["files"] += 1
+            _read_file(full, nested, include_nested, by_conv, conv_meta, by_proj, by_skill,
+                       by_day, by_agent, conv_day, grand, since, until, tz, stats)
 
-    return by_conv, conv_meta, by_proj, by_skill, by_day, grand, stats
+    return by_conv, conv_meta, by_proj, by_skill, by_day, by_agent, conv_day, grand, stats
 
 
-def _read_file(path, by_conv, conv_meta, by_proj, by_skill, by_day, grand, since, until, tz, stats):
+def _read_file(path, nested, include_nested, by_conv, conv_meta, by_proj, by_skill,
+               by_day, by_agent, conv_day, grand, since, until, tz, stats):
+    count_main = (not nested) or include_nested   # feed the standard lenses?
     windowed = since is not None or until is not None
     try:
         fh = open(path, encoding="utf-8")
@@ -149,14 +158,15 @@ def _read_file(path, by_conv, conv_meta, by_proj, by_skill, by_day, grand, since
             except json.JSONDecodeError:
                 continue
             sess = o.get("sessionId", "?")
-            meta = conv_meta.setdefault(sess, {"title": None, "project": None,
-                                                "first_ts": None, "last_ts": None})
-            if o.get("customTitle"):
-                meta["title"] = o.get("customTitle")
-            elif o.get("aiTitle") and not meta["title"]:
-                meta["title"] = o.get("aiTitle")
-            if o.get("cwd"):
-                meta["project"] = o.get("cwd")
+            if count_main:
+                meta = conv_meta.setdefault(sess, {"title": None, "project": None,
+                                                    "first_ts": None, "last_ts": None})
+                if o.get("customTitle"):
+                    meta["title"] = o.get("customTitle")
+                elif o.get("aiTitle") and not meta["title"]:
+                    meta["title"] = o.get("aiTitle")
+                if o.get("cwd"):
+                    meta["project"] = o.get("cwd")
 
             if o.get("type") != "assistant":
                 continue
@@ -172,6 +182,17 @@ def _read_file(path, by_conv, conv_meta, by_proj, by_skill, by_day, grand, since
                 if (since and dt < since) or (until and dt > until):
                     stats["skipped_out_window"] += 1
                     continue
+
+            day = dt.astimezone(tz).strftime("%Y-%m-%d") if dt is not None else None
+            # By-agent lens: ALWAYS (main-thread turns -> '(main thread)', subagent turns -> their type)
+            agent = o.get("attributionAgent") or "(main thread)"
+            for k in TOKKEYS:
+                by_agent[agent][k] += usage.get(k, 0) or 0
+            by_agent[agent]["msgs"] += 1
+
+            if not count_main:
+                continue  # nested file & not --include-nested: standard lenses skip it
+
             # track the in-window time span for the session
             if dt is not None:
                 if meta["first_ts"] is None or dt < parse_ts(meta["first_ts"]):
@@ -181,7 +202,6 @@ def _read_file(path, by_conv, conv_meta, by_proj, by_skill, by_day, grand, since
 
             cwd = o.get("cwd") or "(unknown project)"
             skill = o.get("attributionSkill") or "(no skill)"
-            day = dt.astimezone(tz).strftime("%Y-%m-%d") if dt is not None else None
             cbucket = by_conv.setdefault(sess, zero())
             for k in TOKKEYS:
                 v = usage.get(k, 0) or 0
@@ -191,12 +211,14 @@ def _read_file(path, by_conv, conv_meta, by_proj, by_skill, by_day, grand, since
                 grand[k] += v
                 if day is not None:
                     by_day[day][k] += v
+                    conv_day[sess][day][k] += v
             cbucket["msgs"] += 1
             by_proj[cwd]["msgs"] += 1
             by_skill[skill]["msgs"] += 1
             grand["msgs"] += 1
             if day is not None:
                 by_day[day]["msgs"] += 1
+                conv_day[sess][day]["msgs"] += 1
 
 
 def _rows(bucket_map, key_name, tz, meta=None):
@@ -259,12 +281,19 @@ def main():
             until = parse_local_dt(args.until, tz, end=True)
 
     root = resolve_projects_root()
-    by_conv, conv_meta, by_proj, by_skill, by_day, grand, stats = collect(
+    by_conv, conv_meta, by_proj, by_skill, by_day, by_agent, conv_day, grand, stats = collect(
         root, args.project, args.include_nested, since, until, tz)
 
     conv_rows = _rows(by_conv, "session", tz, conv_meta)
+    # attach each conversation's per-day breakdown (Feature: single-conversation daily detail)
+    for r in conv_rows:
+        cd = conv_day.get(r["session"], {})
+        r["by_day"] = [{"date": day, "total": total_of(cd[day]), "msgs": cd[day].get("msgs", 0)}
+                       for day in sorted(cd.keys())]
     proj_rows = _rows(by_proj, "project", tz)
     skill_rows = _rows(by_skill, "skill", tz)
+    agent_rows = _rows(by_agent, "agent", tz)
+    agent_total = sum(r["total"] for r in agent_rows)
     day_rows = []
     for day in sorted(by_day.keys()):
         d = by_day[day]
@@ -294,6 +323,9 @@ def main():
     print_table("By project", proj_rows, "project", args.top,
                 label_fn=lambda r: os.path.basename(str(r["project"]).rstrip("/\\")) or str(r["project"]))
     print_table("By skill", skill_rows, "skill", args.top)
+    print_table("By agent (incl. nested subagents/workflows)", agent_rows, "agent", args.top)
+    print(f"  (By agent total {fmt(agent_total)} = main thread {fmt(gtot)} + "
+          f"{fmt(agent_total - gtot)} nested; {stats.get('nested_files', 0)} nested file(s))")
 
     if args.json_out and args.json_out != "-":
         payload = {
@@ -309,6 +341,8 @@ def main():
             "by_conversation": conv_rows,
             "by_project": proj_rows,
             "by_skill": skill_rows,
+            "by_agent": agent_rows,
+            "by_agent_total": agent_total,
             "by_day": day_rows,
         }
         os.makedirs(os.path.dirname(args.json_out), exist_ok=True)

@@ -145,6 +145,16 @@ __REFRESH_META__
   .bar-val{font-size:12px;color:var(--text2);font-variant-numeric:tabular-nums;white-space:nowrap;}
   .bar-val b{color:var(--text);font-weight:640;}
   .bar-val .pct{color:var(--series);font-weight:640;margin-left:2px;}
+  /* expandable per-conversation daily detail */
+  details.bar-details{margin:0;}
+  details.bar-details>summary{cursor:pointer;list-style:none;display:grid;grid-template-columns:14px 1fr;align-items:center;gap:0;}
+  details.bar-details>summary::-webkit-details-marker{display:none;}
+  details.bar-details>summary::before{content:"\25B8";color:var(--muted);font-size:11px;}
+  details.bar-details[open]>summary::before{content:"\25BE";}
+  details.bar-details>summary>.bar-row{padding:5px 0;}
+  .subdays{margin:0 0 8px 30px;border-left:2px solid var(--grid);padding-left:12px;}
+  .subday{display:flex;justify-content:space-between;gap:12px;font-size:11.5px;color:var(--text2);padding:2px 0;font-variant-numeric:tabular-nums;}
+  .subday .sd-date{color:var(--text);}
   /* curve */
   svg{width:100%;height:auto;display:block;overflow:visible;}
   .axis{fill:var(--muted);font-size:11px;font-variant-numeric:tabular-nums;}
@@ -337,7 +347,7 @@ __REFRESH_META__
     app.appendChild(c2);
   }
 
-  function barBlock(rows, nameFn, tipFn, grand, rate){
+  function barBlock(rows, nameFn, tipFn, grand, rate, detailFn){
     var wrap=h("div");
     var max=Math.max.apply(null, rows.map(function(r){return r.total||0;}))||1;
     rows.forEach(function(r){
@@ -352,7 +362,16 @@ __REFRESH_META__
         : ("<b>"+n(r.total)+"</b> <span class='pct'>"+share.toFixed(1)+"%</span> &middot; out "+n(r.output_tokens));
       var val=h("div","bar-val", valHtml);
       row.appendChild(nm); row.appendChild(track); row.appendChild(val);
-      wrap.appendChild(row);
+      var det = detailFn ? detailFn(r) : null;
+      if(det){
+        var dd=h("details","bar-details");
+        var sm=document.createElement("summary");
+        sm.appendChild(row);
+        dd.appendChild(sm); dd.appendChild(det);
+        wrap.appendChild(dd);
+      } else {
+        wrap.appendChild(row);
+      }
     });
     return wrap;
   }
@@ -399,11 +418,25 @@ __REFRESH_META__
     }
     var grand=tot.total||0, top=8;
     var denom = tlim > 0 ? tlim : grand;
+    // per-conversation daily breakdown (click a chat to expand its day-by-day usage)
+    function convDaily(r){
+      var days=(r.by_day||[]);
+      if(!days.length) return null;
+      var box=h("div","subdays");
+      days.slice().reverse().forEach(function(dd){
+        var sh = r.total>0 ? (dd.total/r.total*100) : 0;
+        box.appendChild(h("div","subday",
+          "<span class='sd-date'>"+dd.date+"</span><span class='sd-val'>"+
+          (rate>0?("&asymp;"+usd(dd.total*rate)+" &middot; "):"")+n(dd.total)+" tok &middot; "+
+          sh.toFixed(1)+"% of this chat &middot; "+dd.msgs+" turns</span>"));
+      });
+      return box;
+    }
     if((T.by_conversation||[]).length){
-      card.appendChild(h("div","sectlead","<b>By conversation</b> &mdash; per chat (top "+top+")"));
+      card.appendChild(h("div","sectlead","<b>By conversation</b> &mdash; per chat (top "+top+"); 點箭頭看每日明細"));
       card.appendChild(barBlock(T.by_conversation.slice(0,top),
         function(r){return r.title||(r.session||"").slice(0,12);},
-        function(r){return (r.title||r.session)+" — "+n(r.total)+" total, "+r.msgs+" turns";}, denom, rate));
+        function(r){return (r.title||r.session)+" — "+n(r.total)+" total, "+r.msgs+" turns";}, denom, rate, convDaily));
     }
     if((T.by_project||[]).length){
       card.appendChild(h("div","sectlead","<b>By project</b> &mdash; per working directory (top "+top+")"));
@@ -416,6 +449,15 @@ __REFRESH_META__
       card.appendChild(barBlock(T.by_skill.slice(0,top),
         function(r){return r.skill;},
         function(r){return r.skill+" — "+n(r.total)+" total, "+r.msgs+" turns";}, denom, rate));
+    }
+    if((T.by_agent||[]).length){
+      var agTot = T.by_agent_total || T.by_agent.reduce(function(a,r){return a+(r.total||0);},0);
+      var nestedDelta = agTot - grand;
+      card.appendChild(h("div","sectlead","<b>By agent</b> &mdash; 主線 + 子代理/workflow"+
+        "（<b>含 nested</b>，故總量 "+n(agTot)+" 比上方多 "+n(nestedDelta>0?nestedDelta:0)+"；% 為佔 agent 總量）"));
+      card.appendChild(barBlock(T.by_agent.slice(0,top),
+        function(r){return r.agent;},
+        function(r){return r.agent+" — "+n(r.total)+" total, "+r.msgs+" turns";}, agTot, rate));
     }
     app.appendChild(card);
   }
