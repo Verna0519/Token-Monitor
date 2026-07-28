@@ -169,3 +169,29 @@ The scripts read `~/.claude/projects` (the Claude Code transcripts) **read-only*
   JSON read with `-Encoding UTF8` at runtime, never from the script source.
 - **"No python interpreter found"** — install Python 3.9+ (the scripts try `python`, then `py`,
   then `python3`).
+
+---
+
+## Sharing this repo (recipient setup)
+
+This repo is safe to share — every piece of personal data lives in gitignored files, and the
+shipped templates carry only placeholders. After cloning, each person fills their own:
+
+1. **Copy the templates and fill your own values:**
+   ```powershell
+   Copy-Item config\usage-limits.template.json config\usage-limits.json   # your plan limits / reset / token_limit
+   Copy-Item .env.template .env                                           # OPTIONAL: ANALYTICS_API_KEY (cloud fetch)
+   ```
+2. **(only if you'll run the capability pipeline)** fill `config/path-mappings.filled.yaml`
+   (`CLAUDE_PROJECTS_ROOT`) — see `planning/COLD-START.md`.
+3. **Run it:**
+   ```powershell
+   . .\scripts\monitor.ps1
+   tokens                 # local token dashboard (air-gapped)
+   tokens -Cloud          # ALSO fetch real per-product $ (needs ANALYTICS_API_KEY; EGRESS)
+   ```
+
+**What never ships with the repo** (all gitignored): `config/usage-limits.json` (your name + limits),
+`.env` (your key), `worktemp/` (token stats, rendered dashboards, fetched cloud data),
+`raw-sessions/`, `output/`, `handoff/`. Only the `*.template.json` / `.env.template` placeholders are
+tracked, so each recipient's own numbers, name, and key stay on their machine.
