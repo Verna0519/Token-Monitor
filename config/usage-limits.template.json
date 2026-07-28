@@ -17,5 +17,5 @@
   },
   "token_limit": 0,
   "analytics_user_id": null,
-  "window": { "mode": "days", "days": 7, "since": null, "until": null }
+  "window": { "mode": "days", "days": 30, "since": null, "until": null }
 }
