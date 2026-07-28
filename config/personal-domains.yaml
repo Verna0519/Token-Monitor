@@ -1,0 +1,450 @@
+# personal-domains.yaml — eight-domain capability-signal schema
+#
+# The extraction target (§2 CLAUDE.md). The frozen ladder-spec (donor aocc-ai-advisory
+# reference/ladder-spec) defines SIX coaching domains, orthogonal to the 8 rungs. This PERSONAL
+# layer coaches at an EIGHT-domain resolution: the frozen 6 are kept verbatim (codes unchanged =
+# contract continuity), plus TWO net-new domains derived from the corpus (CONTEXT-ENGINEERING,
+# CONTINUITY). The dept learning map's axes.yaml mirrors the SAME 8 domains — no fold (the old
+# 8→6 digest fold was RETIRED 2026-07-15). Taxonomy designed 2026-07-13 via judge-panel workflow
+# (5 proposers × 5 judges × synth × orthogonality verify) + operator-verified grounding.
+#
+# WHY 8 not 6 (load-bearing): lens1 DOUBLE-LISTS the JIT / token-budget / progressive-disclosure /
+# context-anti-pattern material under BOTH by_domain.CODING and by_domain.TUNING (operator-verified
+# in lens1-INTEGRATED.json). That double-listing is a MECE DEFECT in the frozen 6 — CONTEXT-
+# ENGINEERING de-smears it (it is not an arbitrary split). CODING + TUNING are correspondingly
+# TIGHTENED to remove the double-count. CONTINUITY is the cross-session/cross-agent TEMPORAL
+# fidelity axis that had no home in the 6 (it leaked into TUNING + ADVISORY).
+#
+# This file defines the SCHEMA of a domain signal AND the authored rung rubric. Per the donor Q3
+# verdict there was NO verbatim 0→3 rubric; each rung was AUTHORED in Phase 1b (2026-07-13) via a
+# judge-panel-style author→adversarial-verify workflow (8 domains × author+verify; all 8 passed the
+# orthogonality / grounding / monotonicity / RL1-lift / no-cross-person-ranking checks; DESIGN+TUNING
+# took the verifier's recommended minimal fixes). EVAL + CODING were REWRITTEN from the wiki-mined
+# 0→3 skeletons, not lifted (RL1). All PROPOSED — nothing self-ratifies.
+#
+# The rung_rubric (0→3 capability MATURITY) is ORTHOGONAL to signal_tier (intended<structural<actual
+# = evidence STRENGTH): level 0 is a real low-maturity behavior, not "no evidence". The rubric is a
+# DEFINITION used to (a) sharpen extraction and (b) ground the capability-coordinate assessment
+# (emit-coordinate judges a 0-3 level per axis against these markers). It is NEVER shown to the
+# person as a grade — a coordinate level is a POSITION of AI-operation capability, not a rank.
+#
+# RL4: signal_tier (intended < structural < actual) is a categorical SCORE — it is internal
+# evidence-strength weighting for the coordinate assessment, and is NEVER echoed to the person.
+# The personal-facing view derives a growth hint only. Each domain scores the CONSTRUCTIVE graded
+# craft; its paired failure/distortion is a bias_flags concern (a separate channel), NEVER a
+# domain — this is the domain↔bias fence.
+
+schema_version: "0.2-draft"   # 0.1→0.2: 6→8 domains (de-id/taxonomy work 2026-07-13)
+
+domains:
+  DESIGN:
+    label: "系統/流程設計"
+    description: "Decide WHETHER and WHAT to build — frame, decompose, run the deletion test before adding capability."
+    corpus_usability: usable        # donor Q3 (growth_method STRONG)
+    grounding: "lens1 by_domain.DESIGN — deletion-test 5-option escalation ladder (art 10); record-failures-first / defer-building (art 23,24,32); ladder-spec line 91."
+    orthogonality: "whether/what to build — vs FRAMEWORK-SELECTION (with-what substrate), vs CODING (producing it), vs CONTEXT-ENGINEERING (what the agent SEES). Paired distortion (additive/complexity bias) → bias channel."
+    axis: "How deliberately the person decides WHETHER and WHAT to build with AI — framing and decomposing the problem and running a deletion/restraint test — instead of reflexively adding capability."
+    rung_rubric:                    # AUTHORED Phase 1b (0→3 capability maturity; ORTHOGONAL to signal_tier). PROPOSED.
+      - level: 0
+        name: "反射式加建 / Additive-by-default building"
+        definition: "When something is missing or hard, the person's reflexive first move is to ADD — a new tool, another step, a bigger prompt, a whole new helper — and they start building immediately. There is no 'should this exist at all?' pause; deciding-what-to-build and building-it collapse into one reflex, and their AI setup accretes complexity over time with no pruning."
+        observable_markers:
+          - "Adds new capability or structure in response to friction with no recorded consideration of a no-build or removal option"
+          - "Issues build/generation requests with no preceding problem-framing or goal/constraint statement"
+          - "Complexity of the person's AI setup grows monotonically over time with zero pruning episodes"
+          - "Reaches for 'add another thing' as the default answer across unrelated problems"
+          - "Observed ABSENCE of any framing/decompose or deletion-test act before building — the floor is defined as absence of DESIGN craft, not merely the presence of additive bias"
+        grounding: "mindset_themes 'complexity restraint' + bias_themes additive-bias / complexity-bias, read as the UN-corrected default state the corpus says humans must consciously trigger against — i.e. the baseline that DESIGN craft corrects. The corpus frames this additive default explicitly, so it is a real low behavior, not a false citation."
+        boundary_note: "This is the whether/what-to-build reflex (additive default), NOT inability to pick a substrate (FRAMEWORK-SELECTION) or to produce runnable output (CODING). It observes the ABSENCE of restraint craft as a genuine low-maturity behavior — orthogonal to signal_tier, and distinct from merely reporting additive bias in the separate bias channel."
+      - level: 1
+        name: "先框先拆 / Frames & decomposes before building"
+        definition: "Before asking AI to build or generate anything, the person pauses to state the goal and constraints (WHAT and WHY) and breaks the problem into named sub-parts. The reflexive 'just add it' is gone, and they will step back to re-frame when a first attempt drifts — but restraint is not yet systematic: once framed, they still tend to build."
+        observable_markers:
+          - "States goal plus constraints (WHAT/WHY) before issuing a build or generation request"
+          - "Decomposes a request into named sub-parts of the problem before starting work"
+          - "Re-states the goal/constraints and re-decomposes the problem when a first framing proves wrong (re-framing the PROBLEM, not iterating the output)"
+          - "Clarifies approach/methodology ahead of jumping to execution"
+        grounding: "by_domain.DESIGN 'Methodology BEFORE execution / stop and step back' (art 17,18); mindset_themes 'patience before execution'. Captures DESIGN's 'frame + decompose' verbs as a one-time pre-build act."
+        boundary_note: "Framing and decomposing the PROBLEM is DESIGN's frame/decompose verbs. It is not choosing which substrate handles each part (FRAMEWORK-SELECTION), not the multi-round convergence loop that refines an output over time (TUNING — WHAT-not-HOW there lives inside the iteration loop; here it is a single pre-build framing), and not producing the artifact (CODING)."
+      - level: 2
+        name: "刪除測試克制 / Deletion-test restraint"
+        definition: "Before adding capability, the person actively runs a restraint test: asks whether the thing needs to exist at all, whether lighter or no-build options (reuse, adjust what already exists, do nothing) solve it, and escalates to building new capability only when lighter options are exhausted. 'Not building' and 'removing' are treated as first-class acceptable outcomes, and they defer building until a concrete need has actually recurred rather than building speculatively."
+        observable_markers:
+          - "Enumerates lighter or no-build alternatives before committing to add new capability"
+          - "Records at least one decision to NOT build, or to remove/collapse existing structure"
+          - "Defers building a capability until a concrete need has recurred rather than anticipating it"
+          - "Justifies any escalation to 'build new' explicitly as 'lighter options exhausted'"
+        grounding: "by_domain.DESIGN deletion-test escalation ladder (art 10) + deletion-test 'only WHO/HOW belongs here, the rest goes elsewhere' (art 26) + record-failures-first / defer-building (art 23,24,32); mindset_themes 'complexity restraint' and 'emergent over designed'. Re-derived in neutral terms — the literal named-file step ladder is stripped."
+        boundary_note: "The restraint/deletion decision is about WHETHER and HOW-MUCH to build. It is orthogonal to FRAMEWORK-SELECTION's 'given we build, which coordination shape' — the lighter options here are build-vs-not, not substrate-menu choices — and to CODING's production of the artifact. Scope discriminator vs L3: at L2 the remove/defer acts are SINGLE, reactive instances; a periodic/standing pattern across several decisions is reserved for L3."
+      - level: 3
+        name: "需求驅動分層設計 / Emergent, layer-aware design method"
+        definition: "Design restraint is a standing, self-correcting habit. The person lets structure emerge from felt, recurring operational pain rather than whiteboarding it upfront; organizes what they build into layers of differing stability (durable principles vs. volatile plans) so that when things change they know which layer to touch and which to leave alone; applies an explicit tipping-point criterion for when added structure finally earns its cost; and proactively collapses structure that no longer pays for itself, treating such simplification as a healthy, non-monotonic outcome."
+        observable_markers:
+          - "Design decisions are repeatedly triggered by recurring, articulated operational pain rather than by anticipatory building (an emergent pattern across several decisions)"
+          - "Separates durable/rarely-changing design elements from volatile ones so change stays localized to one layer"
+          - "Applies an explicit tipping-point criterion for when added structure becomes worth its ongoing cost"
+          - "Periodically prunes or collapses accumulated structure and frames it as a correct trade-off, not a regression"
+          - "Defines the scope of what is built partly by what it should deliberately NOT do"
+        grounding: "by_domain.DESIGN demand-driven/emergent design (art 23,24), layers-of-stability 'plans WILL change / know WHICH layer to modify' (art 19,20), tipping-point criterion (art 23,24), scope-by-negation (art 25), record-failures-first / defer-until-scope-crystallizes (art 32,33); mindset_themes 'emergent over designed', 'plans WILL change', 'stopping to step back'."
+        boundary_note: "The layering here is design-time stability/change structure (which layer to modify when plans change) — NOT runtime load tiers or token budgets, which are CONTEXT-ENGINEERING (what the model SEES at one instant). Everything stays about the whether/what and its restrained organization over time, not the substrate menu (FRAMEWORK-SELECTION) or shipping runnable artifacts (CODING)."
+  FRAMEWORK-SELECTION:
+    label: "框架/基材選擇"
+    description: "Given a decision to build, pick the right substrate/coordination-shape (Skill vs Subagent vs Agent-Team; model/runtime) by concrete bottleneck and cost, not trend."
+    corpus_usability: usable        # donor Q3 (richest domain)
+    grounding: "lens1 by_domain.FRAMEWORK-SELECTION — Skill→Subagent→Agent-Team radar 'right is not better' (art 7); cost tiers 1x/4x/15x (art 6,7); dispatch modes by context-flow (art 27,31); ladder-spec line 92."
+    orthogonality: "per-task substrate SHAPE choice — absorbs multi-agent orchestration-shape (dispatch-mode selection is a CHOICE, not a separate operation domain). Rung-orthogonal (slide-35 取捨非等級). Trend-chasing → bias channel."
+    axis: "How well the person matches each build to the right substrate and coordination shape — Skill vs isolated Subagent vs multi-agent, plus model/runtime — driven by the concrete bottleneck and cost rather than habit or trend."
+    rung_rubric:                    # AUTHORED Phase 1b (0→3 capability maturity; ORTHOGONAL to signal_tier). PROPOSED.
+      - level: 0
+        name: "單一基材慣性 / Undifferentiated single-substrate"
+        definition: "The person treats substrate as fixed: they reach for one habitual mode (almost always a single chat/tool) for every build, regardless of what the task actually needs. Substrate is never articulated as a decision with alternatives. When a task strains the tool, they force it or abandon the task rather than consider a different shape or model/runtime."
+        observable_markers:
+          - "Across varied tasks, references only one tool/mode; the choice of substrate is never surfaced as a decision"
+          - "When a task overruns the current tool, no alternative substrate/coordination shape is considered"
+          - "No comparison language between two or more substrate or model options anywhere in the transcript"
+        grounding: "Partially grounded: mindset 'complexity restraint' + 'start single-agent, escalate only on evidence' (lens1 mindset_themes; by_domain.FRAMEWORK-SELECTION art 2,7,10) implies this low-maturity contrast, and ladder-spec R1 'per-person ad-hoc, no shared/repeatable artifact' calibrates that undifferentiated single-tool use is a real observed behavior. NEEDS-AUTHORING: the corpus documents the mature end, so the specific 'substrate not recognized as a variable' novice behavior is inferred as the null of the axis rather than directly cited."
+        boundary_note: "This is absence of substrate DIFFERENTIATION, not the trend/complexity distortion (that active chasing is a bias-channel flag, never this level). It is orthogonal to DESIGN: the person may decide fine WHAT to build yet still never vary the with-what substrate. It is not CODING (they may produce working output in their one tool) nor CONTEXT-ENGINEERING (they may even manage the window well) — what is missing is treating substrate/coordination shape as a choice at all."
+      - level: 1
+        name: "認得選單、憑表面線索選 / Menu-aware, picks by surface proxy"
+        definition: "The person recognizes that substrate is a choice — chat vs a wrapped tool vs an agent vs multi-agent, and that different models/runtimes exist — and genuinely varies the choice across tasks. But the selection is driven by coarse proxies: perceived task complexity, 'the most capable / newest option,' or personal familiarity, rather than by the concrete bottleneck. Cost is not yet weighed as a first-class factor."
+        observable_markers:
+          - "References two or more distinct substrates/modes and varies the choice by task"
+          - "Selection rationale cites coarse proxies (task feels complex, most-capable/newest, familiarity) rather than a named bottleneck"
+          - "Relative cost or tier of the options is not weighed before choosing a heavier shape"
+          - "Uses task-complexity as the decision axis where a boundary actually turns on something else (e.g. whether intermediate output belongs in the main thread)"
+        grounding: "lens1 by_domain.FRAMEWORK-SELECTION: 'Skill vs Subagent decision hinges on Context flow, NOT task complexity' (art 5) names exactly the immature proxy this level uses; 'choose substrate by concrete bottleneck... not by architectural trendiness' (art 2,7,10) names the contrast it has not yet reached."
+        boundary_note: "The differentiation graded here is over the substrate/coordination SHAPE and model/runtime — not over what the model sees (CONTEXT-ENGINEERING) or whether to build (DESIGN's deletion test). The immature proxy is still substrate-selection reasoning, so it belongs here; the co-occurring active trend-chasing or complexity bias is reported separately in the bias channel, not scored as this level's constructive content."
+      - level: 2
+        name: "依瓶頸與成本選對 / Bottleneck- and cost-driven selection"
+        definition: "The person selects substrate by naming the concrete bottleneck — context-window exhaustion, incompatible tool/permission sets, a need to isolate intermediate output from the main thread, or a genuine collaboration requirement — and weighs relative cost tiers before escalating. They start with the lightest viable substrate and escalate only on evidence, and they will deliberately choose a lighter option over a 'more capable' one because right is not better."
+        observable_markers:
+          - "Selection rationale names a specific bottleneck (context exhaustion, tool/permission incompatibility, output-isolation need, real collaboration need)"
+          - "Weighs relative cost tiers of substrates before escalating to a heavier one"
+          - "Starts with the lightest viable substrate and escalates only when evidence demands it"
+          - "At least one instance of deliberately picking a lighter/cheaper option over a more powerful one ('right is not better')"
+          - "Applies the correct decision axis for a boundary (e.g. context-flow for isolate-vs-inline) instead of the complexity proxy"
+        grounding: "lens1 by_domain.FRAMEWORK-SELECTION: cost as a first-class dimension with sharply rising tiers across chat→agent→multi-agent (art 6,7); escalation ladder Skill→Subagent→Agent-Team on a five-dim radar with 'right is not better' (art 7); 'choose substrate by concrete bottleneck (context exhaustion, incompatible tool sets, collaboration requirement)... start single-agent, escalate only on evidence' (art 2,7,10); Skill-vs-Subagent by context-flow (art 5)."
+        boundary_note: "Naming a bottleneck drives the SUBSTRATE choice, distinct from DESIGN (the deletion test decides whether the capability should exist at all) and from CONTEXT-ENGINEERING (which then architects tokens/JIT WITHIN the chosen substrate). In 'start single-agent + good context,' the single-agent choice is scored here; the 'good context' execution is CONTEXT-ENGINEERING. Choosing is not producing — writing the runnable config/wiring is CODING."
+      - level: 3
+        name: "系統化基材與協調架構 / Systematic substrate & coordination architecture"
+        definition: "The person reasons about the whole substrate stack and coordination shape as a designed, revisable system. They pick the coordination/handoff shape by a multi-factor rule (does context return to the main thread × is the next step fixed or variable), separate model / runtime / skill-layer concerns and verify the runtime actually provides the infrastructure an approach needs, reason about coordination-cost plateaus and refuse to over-scale, audit substrate-and-communication fit across layered dimensions bottom-up, and down-shift a coordination shape when evidence shows a lighter or different one fits."
+        observable_markers:
+          - "Chooses coordination/handoff shape via a multi-factor rule (context-returns-to-main-thread × fixed-vs-variable next step) rather than one dimension"
+          - "Separates model / runtime / skill-layer concerns and checks the target runtime supplies needed infrastructure before committing (including cross-runtime portability caveats)"
+          - "Reasons explicitly about coordination-cost plateau / diminishing returns and declines to over-scale agent or step count"
+          - "Audits substrate-and-communication fit across layered dimensions bottom-up (environment → transport → topology → protocol → content contract)"
+          - "Revises or down-shifts a previously chosen coordination shape when evidence favors a lighter/different one — treats substrate as revisable, not fixed"
+        grounding: "lens1 by_domain.FRAMEWORK-SELECTION: three dispatch modes chosen by context-flow × fixed-vs-variable next step (art 27,31); five-layer IPC decision model designed bottom-up, L0 constrains L1 (art 30,31); model/runtime/skill three-layer stack + confirm runtime has infrastructure before porting a Skill, and skill-portability sub-problems discovery/loading/tool-coordination (art 1,4); 80% of quality from runtime+context not model (art 4); coordination gains plateau / diminishing returns beyond a small agent count and team-of-workers ≠ team-of-specialists (art 10,23,27)."
+        boundary_note: "This absorbs multi-agent orchestration-shape and dispatch-mode selection, which the domain spec assigns to FRAMEWORK-SELECTION as a CHOICE (not a separate operation domain). It stays rung-orthogonal (slide-35 取捨非等級): the mark of L3 is reasoning quality — down-shifting, plateau-awareness — not reaching the fanciest substrate. It is not the human-in-loop boundary (ADVISORY), not the code that runs (CODING), and not what the model sees at one instant (CONTEXT-ENGINEERING)."
+  CODING:
+    label: "實作/整合"
+    description: "Produce and integrate runnable agent code/config that ships — path discipline, Return Contracts, verification hooks, clean staged commits. (TIGHTENED to artifact PRODUCTION only.)"
+    corpus_usability: thin          # donor Q3 — wiki closes the gap (rewrite, not lift)
+    grounding: "lens1 by_domain.CODING — Subagent Return Contract (art 3,31); never-hardcode-paths + ${VAR} + verification-hook-notify-loudly (art 14,27); per-phase clean commits (art 29). wiki coding_gap FULLY filled — REWRITE not lift (RL1)."
+    orthogonality: "artifact PRODUCTION — vs CONTEXT-ENGINEERING (code the model RUNS vs what it SEES), vs DESIGN (build vs decide-to-build), vs EVAL (ship vs measure). 1.7x-defect / deprecated-API → bias channel."
+    axis: "How maturely the person produces and integrates runnable AI-collaboration code/config that actually ships and holds together — path/portability discipline, bounded interface contracts, wired self-verification, and clean staged integration — as enforcement moves from per-artifact eyeballing, to portable contracted artifacts, to encoded mechanical invariants, to single-instruction end-to-end produce-and-integrate autonomy."
+    rung_rubric:                    # AUTHORED Phase 1b (0→3 capability maturity; ORTHOGONAL to signal_tier). PROPOSED.
+      - level: 0
+        name: "逐件人工把關 / Unharnessed emission"
+        definition: "The person accepts AI-emitted code/config largely as-is with no production discipline. Machine- or session-specific assumptions get baked straight into the artifact (absolute paths, environment/timezone/API facts treated as permanent), delegated sub-tasks return whatever they happen to return with no interface contract, nothing is wired to fail loudly so breakage surfaces only when the person happens to re-read the output, and changes land as one bulk dump (often freezing source-of-truth config before the mechanism even runs). The only 'enforcement' is re-reading each artifact by eye — which does not scale as the artifact set grows."
+        observable_markers:
+          - "Produced artifacts carry machine-/session-specific absolute paths or baked environment assumptions instead of an indirection layer"
+          - "Delegated sub-tasks have no explicit or bounded return/interface contract (ad hoc, unbounded outputs)"
+          - "No self-check wired in — failures pass silently and are caught only by later manual re-reading"
+          - "Integration lands as bulk/unstaged edits; source-of-truth config is edited before the mechanism works"
+          - "Per-artifact human eyeballing is the sole enforcement mechanism"
+        grounding: "lens1 by_domain.CODING states the disciplines whose ABSENCE defines this rung (never-hardcode-paths + ${VAR}, art 27; verification-hook-notify-loudly, art 27; clean per-phase commits + don't freeze SOT early, art 29); bias env-assumption-baking (art 16). wiki architectural-invariants ('human review does not multiply') + autonomous-coding-agent-architecture ('let-a-model-write-code is NOT the reusable pattern') — REWRITTEN to personal scale."
+        boundary_note: "A real low-maturity PRODUCTION behavior (orthogonal to signal_tier: this is not 'no evidence', it is observed raw-emission conduct). It concerns the artifact the model RUNS (paths/contracts/self-checks/integration), not what the model SEES (CONTEXT-ENGINEERING), not deciding whether to build (DESIGN); the missing self-check here is production hygiene, not the absent independent measurement that defines EVAL's low rung."
+      - level: 1
+        name: "可移植 + 有介面契約 / Portable, contracted artifacts"
+        definition: "The person applies baseline engineering hygiene so the artifact runs beyond the session it was authored in. Paths and machine-specifics collapse to a single indirection layer or variables (never hardcoded), each delegated sub-task carries an explicit, BOUNDED return/interface contract (explore deep, return shallow), integration lands in clean per-phase staged steps rather than a bulk dump, and source-of-truth config is updated only after the mechanism actually runs. Code is produced inside a basic harness — a bounded produce → run → fix loop with explicit attempt/stop limits — instead of raw one-shot emission."
+        observable_markers:
+          - "Paths/config resolved through one indirection layer or variables; no machine-specific absolute paths in produced artifacts"
+          - "Delegated sub-tasks are given an explicit, bounded output/interface contract"
+          - "Integration committed in clean, per-phase staged steps; SOT config updated only after the mechanism runs"
+          - "A produce → run → fix loop with explicit attempt/time/repeat stop limits, not unbounded retry"
+        grounding: "lens1 by_domain.CODING art 27 (path indirection/${VAR}), art 3/31 (Return Contract, explore-deep-return-shallow), art 29 (per-phase clean commits, don't freeze SOT early) — the strongest personal-scale anchors in a domain the corpus calls 'thin'. wiki autonomous-coding-agent-architecture (harness + bounded debugger loop with attempt/token/time caps) — REWRITTEN, vendor runtimes stripped."
+        boundary_note: "The return contract is an artifact-INTERFACE discipline (the shape of what a component produces), NOT a token-budget/context-window shaping decision (CONTEXT-ENGINEERING) and NOT a cross-session state handoff (CONTINUITY). Staged commits here are integration hygiene for the running artifact, not a recoverable-state handoff for a later session."
+      - level: 2
+        name: "機制化守則 + 自我修復/自我驗證 / Mechanically-enforced invariants, self-remediating artifacts"
+        definition: "The person moves enforcement from eyeball to MECHANISM. Structural invariants are encoded once and apply everywhere — validate/parse data shapes at the boundary, a forward-only dependency ordering, a single explicit interface for cross-cutting concerns — so the AI's produced code stays consistent without per-artifact human re-check. The failure signals the artifact emits CARRY the fix (specific remediation steps, disambiguated valid options, explicitly named forbidden workarounds), so a broken run is self-correcting rather than merely detected. The artifact is wired to be run and self-checked in isolation (reproduce → fix → re-validate) producing a before/after runnable evidence pair without a human paste-in. Structure is front-loaded rather than postponed, and boundaries are enforced centrally while stylistic latitude stays local."
+        observable_markers:
+          - "Structural invariants encoded as reusable mechanical checks (boundary parsing, forward-only dependency order, single cross-cutting interface) applied across artifacts instead of re-verified by hand each time"
+          - "Failure/check messages carry actionable remediation (fix steps + valid-option disambiguation + named forbidden workarounds), enabling a no-round-trip self-fix"
+          - "Artifact wired for isolated run + self-check (reproduce → fix → re-validate) yielding a before/after runnable evidence pair with no human intervention"
+          - "Enforcement centralized on boundaries; local stylistic autonomy left relaxed; structure front-loaded, not deferred to scale"
+        grounding: "wiki architectural-invariants-as-multipliers (three invariants + locality-of-strictness + front-load-not-postpone) and custom-lints-with-remediation-instructions (remediation-injection + three properties) and per-worktree-app-boot (agent self-validates reproduce→re-validate) — all REWRITTEN to a person's craft, with named runtimes/CDP-LogQL-PromQL tooling/slash-commands/CI-per-PR framing stripped; seeded by lens1 verification-hook-notify-loudly (art 27). NEEDS-AUTHORING: personal-scale evidence for this rung is thin in lens1 (corpus_usability: thin) and leans on the rewritten wiki, not on first-hand personal transcripts."
+        boundary_note: "The wired self-check is a PRODUCTION property (the code fails loudly / self-remediates as it runs), NOT an independent audit living outside the actor's context window (that is EVAL). The invariants shape the code that RUNS, not what the model SEES (CONTEXT-ENGINEERING); encoding them is producing the artifact, not deciding whether to build it (DESIGN)."
+      - level: 3
+        name: "單一指令貫穿產出→整合閉環 + 模式自覺守門 / End-to-end produce-integrate autonomy, mode-aware gating"
+        definition: "From a single instruction the person's setup drives the whole produce-and-integrate lifecycle end to end: validate current state → reproduce the target behavior → implement → re-validate by actually running it → capture a before/after runnable evidence pair → land the durable output. The person treats the threshold as NON-DECOMPOSABLE — automating most of the loop but leaving one step hand-stitched forces the whole thing back to manual, so they close the last-mile gaps rather than banking partial coverage. Gate strictness is MODE-AWARE: strict where a mistake is catastrophic, cheap-rollback elsewhere, and gates are not relaxed until the rung-2 self-remediation mechanism is actually in place."
+        observable_markers:
+          - "A single instruction reliably drives the full produce → run → re-validate → durable-output loop with no hand-stitched hand-off between steps"
+          - "Before/after runnable evidence pair captured autonomously as part of the loop"
+          - "Demonstrated awareness that the loop is non-decomposable — last-mile gaps are closed rather than partial automation being treated as proportional value"
+          - "Gate strictness chosen by consequence-mode (catastrophic-if-wrong stays strict; cheap-rollback relaxed) and relaxed only once self-remediation infrastructure exists"
+        grounding: "wiki agent-end-to-end-feature-autonomy-threshold (single-instruction lifecycle + non-decomposable threshold) and minimal-blocking-merge-gates (mode-conditional gate strictness) — REWRITTEN. NEEDS-AUTHORING / deliberately re-scoped: the source's PR/merge/build-failure steps are stripped (re-scoped to 'produce durable output') and the source's escalation-calibration step is deliberately excluded because human-in-loop escalation judgment belongs to ADVISORY, not CODING; no first-hand personal-transcript evidence backs this top rung yet."
+        boundary_note: "This is autonomy over PRODUCING+INTEGRATING the artifact that ships — not deciding whether/what to build (DESIGN), not the human-in-loop escalation boundary (ADVISORY — the source's escalation-calibration step is intentionally re-homed there and excluded here), not independent measurement of whether it works (EVAL), and not cross-session state handoff (CONTINUITY — the evidence pair is a runnable produce-loop artifact, not a durable state handoff)."
+  TUNING:
+    label: "方法化調校/迭代"
+    description: "Converge output toward a target by METHOD not vibes — additive-vs-subtractive iteration, iteration caps, strategy-vs-guidance, WHAT-not-HOW. (TIGHTENED to the multi-round convergence LOOP.)"
+    corpus_usability: usable        # donor Q3 (STRONG, most named transferable practices)
+    grounding: "lens1 by_domain.TUNING — additive-vs-subtractive triggering (art 12); iteration caps 2 / 3–5 (art 9); strategy-vs-guidance (art 12); self-refinement lift 53%→75–89% (art 9,12); ladder-spec line 94."
+    orthogonality: "the multi-round convergence LOOP (time-now) — vs CONTEXT-ENGINEERING (loop vs static single-shot window), vs EVAL (same-context refine has a precision ceiling; not independent measurement), vs CONTINUITY (refine NOW vs state for LATER). Additive-bias/failure-drift → bias channel."
+    axis: "How methodically the person converges one piece of AI output toward a target across multiple rounds — using deliberate additive-vs-subtractive moves, iteration budgets, and strategy-vs-step framing — versus vibes-based re-prompting."
+    rung_rubric:                    # AUTHORED Phase 1b (0→3 capability maturity; ORTHOGONAL to signal_tier). PROPOSED.
+      - level: 0
+        name: "憑感覺重問 / Vibes Re-prompting"
+        definition: "When the output misses, the person re-prompts reactively without a defined target — nudging with 'try again' / 'make it better'. Each round silently piles on more instructions (unconscious additive drift), there is no stopping rule, and when the loop stalls they either abandon it or restart from scratch. Convergence, when it happens, is accidental rather than steered."
+        observable_markers:
+          - "Re-prompts across rounds are directionless — no stated target or acceptance criterion carried between rounds"
+          - "Instruction/constraint volume grows monotonically round over round with no pruning"
+          - "No sign of an iteration budget: either single-shot bail or open-ended looping"
+          - "Loop terminates by abandonment or full restart rather than by steered convergence"
+        grounding: "lens1 TUNING description antithesis ('by METHOD not vibes'); bias_theme 'additive bias — AI biased toward adding rather than pruning' (art 12) operating unchecked. Low rung derived by contrast to the corpus's named mature practices (legitimate maturity-floor, not absence-of-evidence)."
+        boundary_note: "Belongs to TUNING: it IS a multi-round re-prompt loop over time, just done without method. Not CONTEXT-ENGINEERING (this is about re-prompting rounds, not architecting the single-instant window); not EVAL (no measurement attempt exists at all)."
+      - level: 1
+        name: "指向式迭代 / Goal-Directed Iteration"
+        definition: "The person iterates with an explicit target in mind and gives directional feedback ('closer, but X is off relative to what I want'). They begin stating WHAT they want as a goal/constraint rather than only reacting to the last output, so the loop is genuinely steered. But fixes are still applied additively — patches stack each round — and there is no conscious iteration cap; they stop when it subjectively feels good enough. Corrections are additive by default; any removal here is incidental/reactive, NOT a conscious prune-and-reset (deliberateness is what gates L1→L2)."
+        observable_markers:
+          - "Rounds reference a stated goal or acceptance criterion, not merely 'better'"
+          - "Feedback is diagnostic/directional (names what is wrong against the target)"
+          - "Corrections remain predominantly additive — new constraints added, seldom removed"
+          - "Stop condition is subjective 'good enough' rather than a preset budget"
+        grounding: "lens1 by_domain.TUNING — 'clarify WHAT (goals/constraints) not HOW' (art 12) in its emerging form. Maturity gradient interpolated between the vibes floor and the deliberate-method rung; the WHAT-not-HOW principle directly anchors the goal-articulation behavior."
+        boundary_note: "Still TUNING — steering one artifact's convergence now. Stating the goal here is a within-loop lever, distinct from leaving recoverable state for a later session (CONTINUITY), selecting a build substrate (FRAMEWORK-SELECTION), or independently measuring whether the result works (EVAL)."
+      - level: 2
+        name: "方法化調校 / Method-Driven Tuning"
+        definition: "The person applies named convergence techniques deliberately. They match instruction FORM to the task — boundary-conditions/strategy for open-ended work, explicit steps only for precise multi-step work — and consciously avoid over-specifying HOW when they want to preserve the model's judgment. They notice when a round is merely adding complexity and deliberately run a subtractive pass (prune contradictory instructions, compress, reset the frame) instead of stacking another patch. They carry a rough iteration budget, stops when it feels good enough."
+        observable_markers:
+          - "Instruction form observed to vary by task type (strategy/constraints vs explicit step-by-step)"
+          - "At least one deliberate subtractive / prune-and-reset move, not only additive corrections"
+          - "Constraint framing (goal vs boundary, positive vs negative) chosen intentionally as a tactic"
+          - "Loop bounded by an approximate round budget rather than left open-ended"
+        grounding: "lens1 by_domain.TUNING — additive-vs-subtractive triggering (art 12), strategy-vs-guidance and WHAT-not-HOW (art 12), positive/negative constraint framing (art 12); skillset 'additive-vs-subtractive iteration triggering — noticing when the loop is adding complexity' (art 12)."
+        boundary_note: "The subtractive move here prunes the round-over-round instruction loop (TUNING), distinct from pruning the static single-instant context window's anti-patterns (CONTEXT-ENGINEERING). Choosing strategy-vs-steps is a prompt-crafting lever inside a refinement loop; the same 'strategy not steps' idea in ADVISORY instead governs where the human intervenes when supervising — a different axis. Strategy-vs-guidance / constraint-framing evidence counts toward L2 ONLY when observed inside a multi-round convergence loop on one artifact; the deliberate-subtractive pass and round-budget markers are the load-bearing L2 evidence (the instruction-form markers alone cannot clinch L2 over ADVISORY)."
+      - level: 3
+        name: "調校迴圈治理 / Governed Convergence Loop"
+        definition: "The person governs the loop as a system and knows its limit. Iteration caps are set by task class as policy (fewer rounds for routine work, a few more for critical decisions) and diminishing returns are honored. Subtractive review is a recurring rhythm, not a one-off — periodically pruning accumulated contradictions, compressing, resetting the frame. Crucially, they recognize the precision CEILING of same-context self-refinement: when the checker and the generator share the same blind spots, extra rounds rearrange errors rather than remove them, so they know WHEN to STOP the loop instead of pushing it further."
+        observable_markers:
+          - "Iteration caps applied as a differentiated per-task-class policy, consistently honored"
+          - "Subtractive / reset passes recur on a cadence rather than appearing once"
+          - "Explicit recognition that further same-context rounds have stopped helping (ceiling / failure-drift awareness) drives a deliberate stop decision"
+          - "Strategy-vs-guidance and WHAT/HOW choices made per task with stated rationale"
+        grounding: "lens1 by_domain.TUNING — iteration caps by task type + sharply diminishing returns (art 9), structured self-refinement's bounded lift with a hard ceiling (arts 9,12); mindset 'refinement cycle is double-edged / precision ceiling it can never exceed when evaluator+generator share blind spots'; bias_theme 'failure drift under uncontrolled iteration' (art 9). Benchmark percentages scrubbed per RL1."
+        boundary_note: "Stays inside TUNING by recognizing the loop's ceiling and STOPPING/capping — it does NOT cross into EVAL, whose remedy is measuring in an INDEPENDENT context outside the actor's own window. Governing round-cadence and knowing when to stop is loop-craft (time-now), not building a durable handoff artifact for a later session (CONTINUITY)."
+  CONTEXT-ENGINEERING:
+    label: "脈絡工程"
+    description: "Architect WHAT the model sees at one instant — JIT load tiers, token budgets, progressive disclosure, read-depth, pruning context anti-patterns."
+    corpus_usability: usable        # NET-NEW #1; derived from the verified CODING∩TUNING double-listing
+    grounding: "lens1 skillset 'Context Engineering fluency — JIT tiers, token budgets, progressive disclosure, 5 anti-patterns' (art 3,11) + 'Read-depth judgment' (art 15); mindset 'vibe→context engineering is the key maturity step' (art 22,3); the by_domain.CODING∩TUNING double-listing (OPERATOR-VERIFIED) is the bucket evidence."
+    orthogonality: "de-smears the frozen-6 MECE defect (not a split). Shaping what the model SEES — vs CODING (artifacts it RUNS), vs TUNING (static window vs convergence loop), vs CONTINUITY (intra-session window vs cross-session state, the TIME axis). R4-derived but HOW-WELL not HOW-FAR (an R2 author can budget context superbly; an R7 operator can bloat it). Context-stuffing/eager-loading → bias channel."
+    axis: "How deliberately and skillfully the person architects what the model sees in a single request — right material at the right read-depth with noise pruned — treating the model's attention as a budgeted, scarce resource."
+    rung_rubric:                    # AUTHORED Phase 1b (0→3 capability maturity; ORTHOGONAL to signal_tier). PROPOSED.
+      - level: 0
+        name: "憑感覺投餵 / Vibe Dumping"
+        definition: "The person operates in pure vibe mode toward the model's input: what the model sees is not something they see themselves shaping. They either paste large undifferentiated material wholesale to be safe, or under-supply and expect the model to already know their situation. There is no working notion that the composition of the single request drives output quality."
+        observable_markers:
+          - "Supplies context all-or-nothing: dumps whole files/threads untrimmed, or gives bare asks lacking the background the task needs"
+          - "No visible include/exclude decision — material is present by availability, not by relevance to the task"
+          - "When a result is off, retries by rewording the instruction or blaming the model, never by reconsidering what was (or was not) put in front of it"
+          - "Treats the model as omniscient about the person's context, or as needing everything just in case"
+        grounding: "mindset 'the shift from vibe coding to context engineering is the key maturity step' (art 22,3) — Level 0 is the named 'vibe' pole; the anti-pattern set (context stuffing / eager loading, art 3) describes the over-supply failure this manifests."
+        boundary_note: "Concerns the single-instant INPUT window, not the multi-round convergence loop (TUNING), not the code the model executes (CODING), not state carried to a later session (CONTINUITY). Low craft here is HOW-WELL and is independent of overall tooling sophistication — someone driving advanced agents can still vibe-dump."
+      - level: 1
+        name: "反應式脈絡篩選 / Reactive Curation"
+        definition: "The person has crossed into awareness that WHAT the model sees matters. They curate selectively — supplying the pertinent material rather than everything or nothing — but mostly reactively, after a poor result exposes a bad input. Read-depth is occasionally set but not yet deliberately matched to the task's intent."
+        observable_markers:
+          - "Narrows supplied material toward what seems relevant (picks a pertinent section over a wholesale paste) at least some of the time"
+          - "Shows awareness that excess or irrelevant input degrades output, typically triggered by a prior miss rather than anticipated"
+          - "Sometimes specifies how deeply to read (summarize vs read fully) though not consistently tied to task intent"
+          - "Begins attributing an off result to the input it was given — too much, too little, or the wrong slice — not only to the instruction"
+        grounding: "Read-depth judgment (art 15) and the diagnostic heuristic 'trace an off output back to the reading step' (art 15) anchor the read-depth + input-attribution behaviors; anti-pattern awareness (art 3). The reactive-vs-proactive staging between the corpus's named endpoints is AUTHORED interpolation — the corpus names the skills, not this intermediate rung."
+        boundary_note: "Still single-window composition done per request, not refining across rounds (TUNING). Attributing an off result to the seen input is diagnosing THIS window — distinct from EVAL's independent outside measurement and from CONTINUITY's fidelity of state handed to a later session."
+      - level: 2
+        name: "刻意設計單次視窗 / Deliberate Window Design"
+        definition: "The person composes the single-shot window on purpose, before sending. They choose what to include and exclude by relevance, proactively match read-depth to intent (a light read to understand, a full/verbatim read to reconstruct or build), prune recognizable context anti-patterns, and supply material on demand rather than front-loading everything. Context is treated as a designed input where each element is present for a reason."
+        observable_markers:
+          - "Composes the window ahead of the request: explicit, purposeful include/exclude choices rather than pasting by availability"
+          - "Proactively matches read-depth to intent (light read to understand vs full read to reconstruct/build)"
+          - "Actively avoids or prunes context anti-patterns (over-stuffing, redundant duplication, excess inline examples, front-loading everything)"
+          - "Supplies material just-in-time / on demand instead of eager-loading it all up front"
+          - "Can state why a given element is in the window — relevance to the task at hand"
+        grounding: "JIT tiered / on-demand loading (art 3), the five context anti-patterns to prune (art 3), progressive disclosure so depth loads on demand (art 3), read-depth matched to intent (art 15), physical separation of knowledge layers so the right level loads (art 19,20). Strong direct grounding."
+        boundary_note: "This is composing the static single-instant window — distinct from TUNING's multi-round convergence (a per-shot design act, not iterating toward a target across rounds) and from CONTINUITY (the window is for NOW, not state persisted for a later session). Pruning noise from the input is context craft, not the artifact-production measured by CODING."
+      - level: 3
+        name: "系統化脈絡工程 / Systematized Context Discipline"
+        definition: "The person runs context as an internalized, transferable discipline. They budget the window explicitly — tiering always-on vs task-relevant vs reference material with a stated what-loads-when policy — make and justify deliberate NON-inclusion decisions to protect the model's attention, structure knowledge so only the needed depth surfaces, and reach first for context composition and read-depth when diagnosing an off output. They treat attention as a scarce budgeted resource and can hand the method to someone else as reusable principles."
+        observable_markers:
+          - "Operates an explicit budget/tier policy across the window (layered always-on / task-relevant / reference material with rules for what surfaces when)"
+          - "Makes explicit de-load or non-inclusion decisions and justifies them as attention protection, not merely trimming"
+          - "Structures material into separable layers so only the right depth loads (progressive-disclosure structure applied deliberately)"
+          - "First diagnostic move on a degraded output is to inspect what the model saw and at what depth, before touching the instruction or reasoning"
+          - "Expresses the practice as reusable, named principles a fresh context could apply — a repeatable method, not one-off cleanup"
+          - "Consistently treats context noise as attention-degrading and budgets against it across different tasks"
+        grounding: "Tiered JIT + token-budget thinking (art 3, with the specific vendor token counts stripped per RL1), progressive-disclosure layered structure (art 3), input-quality-first diagnostic / trace-to-reading-step as the default first move (art 15), 'feed the principles directly as operable, reusable principles — conceptual fluency is the debugging toolkit' (art 11), mindset 'context engineering is the discipline the industry is converging on / the key maturity step' (art 22,3)."
+        boundary_note: "Mastery here is HOW-WELL of single-window architecture, orthogonal to overall ladder rung — a person at a modest tooling stage can reach Level 3, and an advanced-tooling operator can still bloat context. Distinct from CONTINUITY's cross-session/cross-agent state discipline (the TIME axis): this budgets the intra-session window. Distinct from TUNING's convergence loop and from EVAL's independent measurement (diagnosing the seen window is not measuring, from outside it, whether the system works)."
+  EVAL:
+    label: "評估/驗證"
+    description: "Measure whether the system actually works, error-analysis-first, via an audit that lives OUTSIDE the actor's own context window. (Highest-leverage domain, ladder-spec line 95.)"
+    corpus_usability: not-usable    # donor Q3 — wiki FULLY closes (error-analysis-first + 6-step loop + llm-as-judge)
+    grounding: "lens1 by_domain.EVAL — cross-agent review in INDEPENDENT context (art 11,22,32,33); shadow metrics / autonomy ramp ≥90% over ≥8 cycles (art 18); skillset 'Independent-judgment framework — core skill for non-engineers' (art 22). wiki eval_gap FULLY filled — REWRITE not lift."
+    orthogonality: "does-it-work (independent measurement) — vs TUNING (independence axis: self-check sees consistency not blind spots), vs CONTINUITY (correctness vs durability), vs ADVISORY (whether-it-works vs where-the-human-decides). Absorbs per-output VERIFICATION (consume-side of the same axis, NOT a separate domain). Self-validation-insufficiency → bias channel."
+    axis: "Whether — and how systematically — the person checks that their own AI output actually works by testing it against something OUTSIDE the context that produced it (a fresh context, actual execution, or external ground truth), rather than trusting fluency or a same-context self-check."
+    rung_rubric:                    # AUTHORED Phase 1b (0→3 capability maturity; ORTHOGONAL to signal_tier). PROPOSED.
+      - level: 0
+        name: "憑感覺驗收 / Vibes-acceptance (self-consistency only)"
+        definition: "The person treats AI output as correct because it reads fluently or looks polished; if they check at all, they re-ask the SAME model in the SAME session ('are you sure?', 'double-check this'), which can only surface internal consistency, not the output's actual blind spots. Polish is taken as a proxy for correctness, there is no step outside the generating context, and there is no memory of how past outputs went wrong."
+        observable_markers:
+          - "Accepts AI outputs directly into use with no external check step observed"
+          - "When doubt arises, resolves it by re-prompting the same session/context rather than consulting an outside source"
+          - "Accepts more readily when output looks polished/well-formatted (treats fluency as correctness)"
+          - "No recurring failure-mode vocabulary; each acceptance is one-off with no reference to prior errors"
+        grounding: "lens1 by_domain.EVAL 'a model checking its own just-generated output can only see consistency, not its own blind spots' (art 11,22,32,33); bias_themes automation-bias / illusion-of-completeness (art 9,22) + self-validation-structurally-insufficient (art 22); wiki eval_0to3_synthesis RUNG 0 'vibes-based evaluation' REWRITTEN from team release-evidence to a single person's same-context self-check."
+        boundary_note: "This is EVAL-at-zero (absence of any outside-context does-it-work check), not TUNING — re-asking the same session to polish is same-context refinement, and the defect here is specifically the missing independent check, not the missing iteration. It is a real observable behavior, not 'no evidence' (that is signal_tier, orthogonal to this rung)."
+      - level: 1
+        name: "拿到外部去對 / Independent check + failure-pattern noticing"
+        definition: "The person at least sometimes takes an AI output OUT of the generating context to test whether it actually works — a fresh/clean session, a different tool, actually running the code, or comparing against external ground truth (source docs, real data) instead of re-asking the author. From reviewing their own past AI outputs, they start naming recurring ways their AI tends to fail (a failure-mode vocabulary) and check for those. The check is real but still ad hoc and manual, triggered case by case rather than as a repeatable regime."
+        observable_markers:
+          - "Routes an output through a check that is distinct from the session that produced it (fresh context / different tool / execution)"
+          - "Verifies against external ground — running it, real data, authoritative docs — rather than re-prompting the generator"
+          - "References recurring failure modes of their own AI use ('it tends to X') drawn from past outputs, not just the current one"
+          - "Inspects the actual output against reality before use on higher-stakes items; checking is selective and manual, not systematic"
+        grounding: "lens1 by_domain.EVAL cross-agent review in INDEPENDENT context + 'LLM self-correction fails without external feedback … requires search / code execution / knowledge base as external ground' (art 11,16); skillset 'Independent-judgment framework — core skill for non-engineers' + silent-failure input-quality trace-back (art 15,16,22); wiki eval_0to3_synthesis RUNG 1 error-analysis-first REWRITTEN so the 'traces' are the person's own past AI-output history (no production traffic to sample)."
+        boundary_note: "Independence is the EVAL discriminator vs TUNING: measuring against an OUTSIDE reference asks does-it-work, whereas TUNING is the same-context convergence loop. Cataloguing failure modes is correctness analysis (EVAL), distinct from CONTINUITY (durability of a handoff) and ADVISORY (where the human decision sits)."
+      - level: 2
+        name: "針對已知弱點的可重複檢查 / Targeted, calibrated checks matched to known failure modes"
+        definition: "The person turns catalogued failure modes into TARGETED, repeatable checks and picks the check type by criterion: a deterministic/mechanical check where correctness is objective (run it, diff against source, confirm required elements present), and an independent judgment-based review (a genuinely fresh-context read or a second unbiased pass) only where the criterion needs judgment. When they use AI itself as the checker, they do not treat it as an oracle — they first sanity-check the checker against known-good and known-bad examples before trusting its verdict, because a checker that shares the same blind spots is not independent. They also guard a success signal with a paired side-effect check so one number can't be gamed."
+        observable_markers:
+          - "Selects check mechanism by criterion type: objective criteria checked deterministically, judgment reserved for subjective criteria"
+          - "Uses repeatable checks aimed at specific known failure modes rather than a generic 'looks right?' pass"
+          - "When AI is the checker, validates it against known-good and known-bad examples before relying on it"
+          - "Pairs a success signal with a side-effect check and challenges the metric with facts (does not optimize a single number blindly)"
+        grounding: "lens1 by_domain.EVAL shadow-metrics-paired-with-primary / Goodhart (art 18) + structurally-independent-verification-with-explicit-methodology for silent failures (art 16); bias_themes 17x-cross-check-not-independent + self-validation-insufficient (art 22); wiki eval_0to3_synthesis RUNG 2 evaluator-taxonomy + judge-validation REWRITTEN — TPR/TNR classifier-validation stats harness reduced to 'sanity-check the checker against known-good/known-bad', RAG IR-metric libs and CI/vendor tooling stripped."
+        boundary_note: "Still EVAL (designing the measurement), not CODING — building a check that MEASURES an output is the produce-side of the does-it-work axis, distinct from producing the shipped artifact itself. Calibrating the checker is correctness-of-measurement, orthogonal to TUNING's output-convergence loop."
+      - level: 3
+        name: "累積式回歸檢查 + 驅動下一步 / Accumulating regression regime that drives what to improve next"
+        definition: "The person's independent checks become a durable, accumulating regime: a maintained set of known-failure cases that new AI work is re-checked against, so a bug they have hit before cannot silently return; every newly discovered failure is folded back into that set rather than fixed once and forgotten; and — the top of the ladder — check results are used not only to accept/reject the current output but to decide WHERE to intervene and what to strengthen next in how they use AI. They prioritize checks by cost-if-wrong (the catastrophic-if-wrong ones first) and relax their own oversight on a task-type only after observing a measured accuracy track record across repeated instances, rather than assuming trust."
+        observable_markers:
+          - "Maintains and re-runs an accumulating set of known-failure cases against new AI work so prior failures cannot silently recur"
+          - "Newly found failures are added back into the check set rather than resolved and dropped"
+          - "Uses check results to decide what to improve next in their AI practice, not only to pass/fail the current output"
+          - "Reduces own verification effort on a task-type only after a measured accuracy track record; sequences highest-cost-if-wrong checks first"
+        grounding: "lens1 by_domain.EVAL autonomy-ramp gate (earn reduced oversight from measured accuracy over repeated cycles, art 18) + methodology-feedback-loop 'improvements become mechanism, not human memory' (art 33); wiki eval_0to3_synthesis RUNG 3 regression-gated + 'evals discover what to improve next' + safety-first ordering REWRITTEN — CI merge-gate and production-drift monitoring stripped; re-scoped to a personal accumulating check-set and an earned-trust ramp (no live traffic)."
+        boundary_note: "The durability of the case-set across sessions borders CONTINUITY, but the graded thing here is the MEASUREMENT regime (does new work still pass known checks, and what to fix next), not the fidelity of state carried across a handoff. The earned-trust ramp borders ADVISORY, but here trust is EARNED FROM MEASURED CORRECTNESS (EVAL), not the placement of the human decision boundary itself."
+  ADVISORY:
+    label: "顧問/人機界線"
+    description: "Draw the human-in-loop WHAT/HOW/RISK boundary correctly — intervene with strategy not steps, escalate only on genuine judgment, ramp autonomy on measured accuracy."
+    corpus_usability: usable        # donor Q3 (STRONG)
+    grounding: "lens1 by_domain.ADVISORY — intervention = STRATEGY not GUIDANCE (art 12); reserve human for business judgment + one-cycle-before-escalate + repeatedly-overridden→HARD-STOP (art 18); identify HIL boundary MANUALLY before automating (art 23); ladder-spec line 96."
+    orthogonality: "WHERE the human decision sits + whether a high rung is SAFE (Stage-1→2→3 graduation) — vs EVAL (where-humans-decide vs whether-it-works), vs CONTINUITY (placing the boundary vs carrying state across it), vs FRAMEWORK-SELECTION (HIL placement vs substrate). Automation-bias / illusion-of-completeness → bias channel."
+    axis: "How deliberately and dynamically the person places and governs their own human-in-the-loop (WHAT/HOW/RISK) boundary with the AI — intervening with strategy not step-by-step guidance, reserving their own judgment for genuine calls, letting the AI run a cycle before escalating, and ramping the AI's autonomy on observed reliability."
+    rung_rubric:                    # AUTHORED Phase 1b (0→3 capability maturity; ORTHOGONAL to signal_tier). PROPOSED.
+      - level: 0
+        name: "無界線 / No conscious boundary"
+        definition: "The person exercises no deliberate human-in-loop boundary with their AI. They sit at an extreme: either accepting AI output wholesale (waving it through unexamined) or hovering over every step dictating exact actions. When they do steer, it is pure step-by-step prescription — never goal- or constraint-level direction — and they hold no notion of which decisions are genuinely theirs versus the AI's. They tend to cut the AI off before it completes even one attempt, or not engage at all."
+        observable_markers:
+          - "Corrections to the AI are exclusively prescriptive (exact next actions), with zero goal- or constraint-level framing"
+          - "Behavior sits at an extreme: near-zero review of output, OR intervention on essentially every step with no selectivity"
+          - "No statement anywhere of what the human should decide versus what the AI can decide"
+          - "Frequently interrupts the AI before it completes a single attempt/cycle, or never engages at all"
+        grounding: "Low pole of lens1 by_domain.ADVISORY art 12 (the guidance-not-strategy end of the strategy↔guidance spectrum) plus the absence of art 18's reserved-judgment discipline. Partially author-inferred: the corpus describes the mature pole explicitly and this null pole by implication."
+        boundary_note: "Belongs to ADVISORY (boundary-placement craft) not EVAL — the failure is the absence of any human-decision-locus, not a failure to measure whether output works. The polished-output-trust distortion itself is reported in the bias channel (automation-bias), not scored here; this level grades only the constructive absence of boundary craft."
+      - level: 1
+        name: "反應式檢查 / Reactive review"
+        definition: "The person reviews AI output and steps in when something looks wrong, so they no longer wave work through — but the boundary is unarticulated and applied unevenly. Intervention timing is ad-hoc (sometimes cutting off a cycle too early, sometimes catching problems too late), and corrections still lean on prescribing steps rather than setting direction. They sense review is needed without having decided WHERE, as the human, they should sit."
+        observable_markers:
+          - "Reviews or checks AI output before relying on it (no longer wholesale acceptance)"
+          - "Intervention timing is inconsistent — jumps in on first friction in some cases, misses until late in others"
+          - "Corrections mix goal-level steering with step-prescription, weighted toward prescribing steps"
+          - "No explicit articulation of the WHAT/HOW/RISK split or of which calls are reserved for the human"
+        grounding: "Transitional rung between lens1 by_domain.ADVISORY art 12 (partial strategy-vs-guidance awareness) and art 11 (checkpoints present but not yet structured at handoffs). Partially author-inferred: the corpus centers the mature end, so this reactive-but-unprincipled middle is interpolated."
+        boundary_note: "Still ADVISORY — the graded thing is how the person places their own intervention, not whether the output is correct (EVAL) nor whether state survives a handoff (CONTINUITY). Reviewing output here is the person deciding when to step in, distinct from EVAL's independent correctness measurement."
+      - level: 2
+        name: "策略式界線 / Strategic boundary"
+        definition: "The person deliberately places the boundary. They intervene with strategy — goals, constraints, boundary conditions — rather than dictating steps, and adapt the form to the task (open-ended work gets direction; precise multi-step work gets explicit steps). They let the AI complete at least one attempt or investigation cycle before escalating to themselves, reserve their own intervention for genuine judgment calls (risk, cost trade-offs, external knowledge the AI lacks), and set review at key handoffs and final output instead of micromanaging. They can state which of WHAT/HOW/RISK the human owns."
+        observable_markers:
+          - "Corrections framed as goals/constraints/boundary conditions, with form matched to task type (direction for exploratory, steps for precise multi-step)"
+          - "Lets the AI finish at least one attempt or investigation cycle before intervening"
+          - "Explicitly reserves own intervention for judgment calls (risk, trade-off, missing external knowledge) and delegates the rest"
+          - "Places review at key handoffs and final output rather than at every step"
+          - "Confirms the goal/mandate is understood before delegating, rather than dictating the execution path"
+        grounding: "Strong: lens1 by_domain.ADVISORY art 12 (intervene with STRATEGY not GUIDANCE; form by task type), art 18 (reserve human for business/judgment; one-cycle-before-escalate), art 11 (structured intervention at key handoffs, not micromanagement), art 10 (human role shifts execute→supervise)."
+        boundary_note: "ADVISORY, not FRAMEWORK-SELECTION — this is WHERE the human decision sits within a workflow, not which substrate/coordination-shape runs it. 'One cycle before escalate' is a boundary-placement rule, distinct from EVAL's question of whether that cycle's output is correct."
+      - level: 3
+        name: "校準式自主治理 / Calibrated autonomy governance"
+        definition: "The person governs the boundary as a moving, safety-bounded decision. They ramp the AI's autonomy up or down in response to observed reliability rather than fixed trust or distrust (non-monotonic is fine), set explicit forced-halt and graceful-degradation conditions (repeated override → stop; drift → fall back to hands-on), and discover the true boundary by doing a task by hand first before delegating that judgment. They concentrate vigilance on the high-risk residual — the small fraction that stays dangerous once the rest looks solved — rather than reviewing uniformly, and re-place the boundary as the AI's demonstrated capability changes."
+        observable_markers:
+          - "Adjusts the AI's granted autonomy across tasks/sessions in response to its observed reliability (more after it proves out, pulled back after failures); direction is non-monotonic"
+          - "Declares explicit stop / fallback-to-manual conditions rather than extending open-ended trust"
+          - "Does the task by hand first to locate where genuine judgment is required before automating that step"
+          - "Targets vigilance at the high-risk residual specifically, not spread evenly across all output"
+          - "Re-places the boundary when the AI's demonstrated capability shifts, treating HIL placement as an ongoing governed decision"
+        grounding: "Strong: lens1 by_domain.ADVISORY art 18 (ramp autonomy on observed reliability; repeatedly-overridden→hard-stop), art 11 (bounded scope + exit conditions, health-metric watch, graceful degradation back to human-in-loop), art 23 (identify the HIL boundary manually before automating), art 34 (put humans at the RIGHT decision points); mindset_themes 'the almost-solved 99% phase is most dangerous' (vigilance on the residual)."
+        boundary_note: "The reliability signal is CONSUMED here to decide autonomy placement; producing that signal via independent measurement is EVAL. Re-placing the boundary over time is distinct from CONTINUITY's carrying of state across a boundary. The paired automation-bias / illusion-of-completeness distortion is reported in the bias channel, not scored as this level."
+  CONTINUITY:
+    label: "跨界狀態承接/交接"
+    description: "Leave recoverable, faithful state ACROSS session and agent boundaries over TIME — handoff-test, temporal-constraint tagging, enumerating unwritten assumptions."
+    corpus_usability: usable        # NET-NEW #2; chosen independently by 4/5 proposals
+    grounding: "lens1 skillset — end-of-session ritual (surface assumptions, tag temporary constraints with expiry, art 13); handoff-test 'can the next agent reach the same conclusions from files alone?' (art 8,13); self-audit 'enumerate everything you know but haven't written down' (art 8); wiki strategic-memory 5-tuple + knowledge-twin 2-file split as the shape of a crossing artifact."
+    orthogonality: "cross-session/cross-agent TEMPORAL fidelity (no home in the frozen 6) — vs CONTEXT-ENGINEERING (inter-session state vs intra-session window; the ladder's R7→R8 TIME discriminator), vs TUNING (state for LATER vs improve NOW), vs EVAL (durability vs correctness), vs ADVISORY (fidelity across a boundary vs placement of it). Most rung-orthogonal of the 8 (an R8 org member can personally leak context; an R2 chat user can leave a flawless handoff). Context-blind-spot / ephemeral→permanent drift → bias channel."
+    axis: "How faithfully and recoverably a person carries their own working state across session-end and agent-handoff boundaries over time — the reconstructability of what they leave behind and its temporal discipline (expiry, provenance, durable-vs-ephemeral split), independent of how sophisticated their tooling is."
+    rung_rubric:                    # AUTHORED Phase 1b (0→3 capability maturity; ORTHOGONAL to signal_tier). PROPOSED.
+      - level: 0
+        name: "狀態隨會話蒸發 / State evaporates at the boundary"
+        definition: "The person works each session as disposable. They stop without leaving any deliberately recoverable state for a future session or a fresh agent; when work resumes, context must be rebuilt from memory or re-typed from scratch. Whatever the collaboration 'knew' mid-session simply dies at the boundary, and the person relies on their own recall rather than any durable trace to bridge the gap. This is an active low-maturity habit, not merely thin evidence."
+        observable_markers:
+          - "Sessions end with no closing note, summary, or state artifact authored for a future reader"
+          - "New sessions open by re-explaining background the person demonstrably already held"
+          - "Cross-session references point to the person's own recollection rather than to any durable written state"
+          - "No pause before stopping to capture decisions made or work still pending"
+        grounding: "Inverse pole of lens1 skillset self-audit micro-skill for the session-boundary blind spot (art 8); bias_themes 'context blind spot — omits what it considers already-known, downstream fresh sessions inherit wrong premises' (art 8,13) names this exact failure. L0 is scored here as the low-maturity CONTINUITY behavior on the capability axis, not as a bias flag."
+        boundary_note: "Belongs to CONTINUITY because the failure is temporal/across-the-boundary (nothing survives to the next session), NOT to CONTEXT-ENGINEERING — a person could pack the single-instant window beautifully yet still leave zero recoverable state for later. It is a state-durability failure, not an intra-window shaping failure."
+      - level: 1
+        name: "傾倒式留痕 / Unfiltered state dump"
+        definition: "The person does leave something behind so the next session isn't from zero — a running log, a paste of the conversation, a 'here's where we are' note — but it is a raw, reactive dump. Content is undifferentiated: decisions, transient scratch, and background are commingled with no prioritization for what a fresh reader actually needs, it is never tested from a zero-context standpoint, and nothing marks which items were just-for-now versus durable. State is saved by habit, not yet as a discipline."
+        observable_markers:
+          - "Produces closing notes/logs/summaries at boundaries, but content is undifferentiated (full transcript dumps or everything top-of-mind)"
+          - "Handoff content mixes decisions, throwaway scratch, and inferable background without ranking by decision-relevance"
+          - "No evidence of checking the handoff from a fresh reader's perspective"
+          - "No distinction drawn between temporary and permanent items in what is left behind"
+        grounding: "lens1 CODING 'plaintext handoff/state doc as first crossing artifact' (art 23) confirms a handoff artifact stage exists; lens1 TUNING 'handoff quality beats quantity — write only what the next agent CANNOT infer but NEEDS' (art 13) names the mature filter, implying the unfiltered-dump stage as its foil. Partial NEEDS-AUTHORING: the corpus names the quality filter, not the dump stage explicitly — L1 is derived as that filter's foil."
+        boundary_note: "Still CONTINUITY (state-for-LATER left across a boundary), not TUNING — the person is not iterating to improve the present output, they are preserving state for a future crossing. It sits below L2 precisely by the ABSENCE of the handoff-test and the quality-over-quantity filter, which is what distinguishes leaving-something from leaving-something-recoverable."
+      - level: 2
+        name: "通過交接測試 / Tested handoff"
+        definition: "The person runs an explicit end-of-session pass and a handoff-test: before closing, they ask whether a reader or agent with NONE of their current context could reach the same conclusions from the files alone, and they run a self-audit — deliberately enumerating everything they know but did not write down — then fill those gaps. The handoff is filtered to what the next reader cannot infer but needs to decide correctly. This surfaces the tacit 'already-known' premises and writes them out, closing the context-blind-spot as a matter of routine."
+        observable_markers:
+          - "A distinct end-of-session closing pass, separate from the work itself, that surfaces assumptions and updates the next reader's starting point"
+          - "Applies a zero-context / fresh-reader reconstructability test to the handoff"
+          - "Explicitly enumerates unwritten assumptions, references, or paths and adds the missing ones"
+          - "Handoff content is filtered to non-inferable, decision-relevant items (quality prioritized over volume)"
+        grounding: "Strongest-grounded level: lens1 skillset handoff-test drill 'can the next agent reach the same conclusions from files alone?' (art 8,13) + self-audit 'enumerate everything you know but did not write down; add them all' (art 8) + end-of-session ritual steps surface-assumptions / fill-missing-context / update-next-startup (art 13) + TUNING handoff quality-beats-quantity (art 13)."
+        boundary_note: "This is fidelity ACROSS the boundary (CONTINUITY) — vs ADVISORY, which places the human-in-loop boundary (who decides), not carries state over it; and vs EVAL, whose independent audit measures whether the CONCLUSION is correct. The handoff-test here is a reconstructability check of transferred STATE, not a correctness verification of the work — completeness of the crossing, not truth of the answer."
+      - level: 3
+        name: "時序紀律狀態 / Temporally-disciplined durable state"
+        definition: "The person's handoff is not just complete but temporally disciplined so it survives many crossings, not only the next one. Temporary constraints are tagged with explicit expiry or validity conditions so a just-for-now instruction cannot silently harden into a permanent rule; carried facts carry provenance (when, why, and under which assumptions they held) so a future reader can tell stale from live; and durable knowledge is physically separated from ephemeral scratch into distinct tiers so the right level is picked up later. Before reusing a carried-over fact or constraint the person re-checks whether it still holds rather than treating it as permanent."
+        observable_markers:
+          - "Temporary constraints are recorded with an explicit expiry or validity condition (holds until X / only for this task)"
+          - "State entries carry provenance — the date, context, or assumptions under which they were true — enabling later staleness detection"
+          - "Durable versus ephemeral content is separated into distinct tiers or notes rather than commingled"
+          - "Re-validates whether a carried-over fact or constraint still holds before relying on it, and designs the artifact to survive repeated/long-horizon crossings"
+        grounding: "lens1 end-of-session ritual step 'tag temporary constraints with expiry conditions' framed as the human equivalent of write-policies + temporal-credit-assignment + provenance-aware retrieval (art 13); DESIGN physical file separation of knowledge layers so the right level loads later (art 19,20); bias_themes ephemeral→permanent drift (art 13) and environment-assumption baking (art 16) name the failures this craft guards against; the donor wiki's structured state entry with provenance and its durable/ephemeral two-tier split re-derived here in neutral terms (RL1)."
+        boundary_note: "The TIME axis at its sharpest — cross-session state carrying temporal metadata (expiry, provenance) — which the spec calls out as CONTINUITY's discriminator. Distinct from CONTEXT-ENGINEERING, whose layering is about what to load into the single-instant window under a token budget and has no expiry/staleness dimension. This is a personal AUTHORING discipline (how you write your handoff), NOT building a persistence/memory system — that infrastructure work would belong to a neighbour/rung concern, and the spec notes a harness-builder can still personally leak context."
+
+# A single domain signal (per-session extraction shape). Personal-facing output NEVER shows
+# signal_tier — only growth_hint is surfaced to the person.
+domain_signal_shape:
+  signal_tier: "intended | structural | actual   # SCORE — internal evidence strength, never to the person"
+  evidence_refs: "list of ABSTRACT refs (counts / behaviors) — NEVER raw transcript snippets (style fingerprint leak)"
+  growth_hint: "forward-looking, no-score vocabulary ('試著加強 X') — the ONLY field surfaced to the person"
+
+# BIAS themes come from the donor lens1 empirically-grounded set (20 themes). Loaded in Phase 1.
+# The domain↔bias fence: a domain scores CONSTRUCTIVE craft + emits a forward hint; the paired
+# distortion (additive bias, trend-chasing, self-validation-insufficiency, context-blind-spot, …)
+# is reported ONLY in bias_flags (upward), never surfaced to the person, never a 9th domain.
+bias_source: "donor aocc lens1-INTEGRATED (20 empirically-grounded BIAS themes) — rewrite, not lift"
+
+# 8→6 FOLD — RETIRED 2026-07-15 with the digest pipeline (operator ruling). The dept learning map
+# consumes the capability COORDINATE at the same 8 axes (its config/axes.yaml mirrors these
+# domains), so no fold exists anymore. (Historical: the fold mapped CONTEXT-ENGINEERING →
+# {CODING, TUNING} and CONTINUITY → personal-only, for the since-retired 6-domain dept spec.)

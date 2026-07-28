@@ -1,0 +1,65 @@
+# .gitignore — DENY-BY-DEFAULT seam enforcer (standalone-l3 dual-layer + RL4 directed visibility)
+#
+# Strategy: ignore EVERYTHING first, then explicitly un-ignore the classified shareable-core
+# paths. Any new/unclassified path therefore defaults to PRIVATE. Classify a new path in INDEX.md
+# and add an un-ignore line below before it can be tracked.
+#
+# RL4 note: the highest-risk PRIVATE buckets here hold identity-bearing material — raw local
+# transcripts + identity-bearing analysis intermediates + the coordinate staging. They must NEVER
+# be tracked. The upward coordinate carries no identity but is still operator output → PRIVATE.
+
+# 1. Deny everything.
+/*
+/.*
+
+# 2. Un-ignore shareable-core top-level files.
+!/CLAUDE.md
+!/README.md
+!/INDEX.md
+!/manifest.yaml
+!/.env.template
+!/.gitignore
+!/.gitattributes
+
+# 3. Un-ignore shareable-core directories (then re-deny private leaves inside them).
+!/decisions/
+!/planning/
+!/self-growth/
+!/scripts/
+!/.claude/
+!/config/
+
+# 3b. .claude/ is mixed: settings.json is [S]; the harness's MACHINE-LOCAL permission ledger is
+#     [P] (approved-command strings land there verbatim). Never track it.
+/.claude/settings.local.json
+
+# 4. config/ is mixed: allow the templates + schema, deny the private instances.
+config/*
+!config/path-mappings.yaml
+!config/personal-domains.yaml
+!config/extraction.schema.json
+!config/STATE-template.md
+!config/usage-limits.template.json
+!config/.gitkeep
+# private config instances stay ignored (NOT un-ignored):
+#   config/STATE.md
+#   config/path-mappings.filled.yaml
+#   config/usage-limits.json          (personal plan limits)
+
+# 5. self-growth/ is mixed: allow mechanism + core log, deny the private log.
+self-growth/*
+!self-growth/insight-log-core.md
+!self-growth/README.md
+!self-growth/.gitkeep
+# self-growth/insight-log-private.md stays ignored.
+
+# 6. PRIVATE data buckets — never tracked (RL4: identity-bearing). NOT un-ignored:
+#   raw-sessions/   — raw local transcripts + identity-bearing analysis (highest sensitivity)
+#   handoff/        — coordinate uploads (the only file type that leaves, hand-carried → private)
+#   output/         — personal-facing growth advice (real self-view → private)
+#   worktemp/       — scratch
+
+# 7. Python bytecode caches — noise, never tracked (scripts/ is un-ignored above, so a
+#    __pycache__/ under it would otherwise be commit-eligible).
+__pycache__/
+*.pyc

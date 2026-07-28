@@ -1,0 +1,83 @@
+# manifest.yaml — standalone-l3 schema (personal layer of the three-layer coaching design)
+# Schema source: aocc-ai-advisory/manifest.yaml (donor) ← standalone-l3-agent-pattern (pin 09d0792).
+# This is a self-contained Layer-3 agent: it runs with NO team/other-layer runtime link (RL1).
+
+agent: aocc-personal-ai-coach  # official name (operator-designated 2026-07-15; local dir renamed to match 2026-07-15)
+version: 0.1.0                 # coordinate model v1 (2026-07-15; digest pipeline retired)
+mode: standalone-l3
+layer: personal               # three-layer design: personal | dept-head | center
+donor: aocc-ai-advisory       # build-time donor only (not a runtime dependency)
+
+# Scripts/skills forked from the donor carry lineage here (SOLE exception to the scrub-grep).
+forked_skills:
+  - name: session-ingest (extraction skeleton)
+    source_agent: ai-article
+    source_path: ai-article/.claude/skills/session-ingest
+    source_version: "(structure fork; not commit-pinned — donor is a separate repo)"
+    forked_at: 2026-07-09
+    scrubbed: true             # P1a done — schema swapped to eight-domain + BIAS; coupling scrubbed
+  - name: check-visibility-seam.sh (RL4 gate)
+    source_agent: aocc-ai-advisory
+    source_path: aocc-ai-advisory/scripts/check-seam.sh
+    source_version: "(concept fork — direction INVERTED: shareable/private → directed visibility)"
+    forked_at: 2026-07-09
+    scrubbed: true
+  - name: validate-selfcontainment.sh
+    source_agent: aocc-ai-advisory
+    source_path: aocc-ai-advisory/scripts/validate-selfcontainment.sh
+    source_version: "(structure fork; backbone list adapted to this repo)"
+    forked_at: 2026-07-09
+    scrubbed: true
+
+forked_commands: []
+forked_tools: []
+
+baseline_tools_required:
+  - Read
+  - Write
+  - Bash
+  - Edit
+
+env_vars_required: []          # Pilot needs no API key (local jsonl only)
+
+external_dependencies:
+  python_libs:
+    - pyyaml                    # config parse (safe_load)
+    - jsonschema                # draft-07 extraction validation (fail-closed)
+  note: "jsonl parsing = stdlib json. Additional per-format libs only if a later pass adds non-jsonl sources."
+
+# External resources reached ONLY through this single indirection layer.
+external_paths:
+  resolver: config/path-mappings.yaml
+  note: "No logic-baked absolute paths. A missing resource flags loudly (non-zero exit). CLAUDE_PROJECTS_ROOT is READ-ONLY input ingestion, not a ~/.claude runtime coupling (ADR-0001 §1)."
+
+# In-repo dual-layer extension: each top-level path maps to exactly one layer.
+# NOTE: this repo's seam is DIRECTED VISIBILITY (RL4), not aocc's shareable/private-content split —
+# the PRIVATE buckets here are identity-bearing (raw transcripts + staging), and the highest-risk
+# gate is check-visibility-seam.sh (the upward coordinate is shape-clean), not real-name scanning.
+dual_layer:
+  shareable:
+    - CLAUDE.md
+    - README.md
+    - INDEX.md
+    - manifest.yaml
+    - .env.template
+    - .gitignore
+    - decisions/
+    - planning/
+    - config/path-mappings.yaml
+    - config/personal-domains.yaml
+    - config/STATE-template.md
+    - self-growth/insight-log-core.md
+    - self-growth/README.md
+    - scripts/
+    - .claude/
+  private:
+    - raw-sessions/             # raw local transcripts + identity-bearing analysis (highest sensitivity)
+    - handoff/                  # coordinate uploads — the only file type that leaves (hand-carried)
+    - output/                   # personal-facing growth advice (real self-view)
+    - worktemp/
+    - config/STATE.md
+    - config/path-mappings.filled.yaml
+    - self-growth/insight-log-private.md
+    - .env

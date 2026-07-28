@@ -1,0 +1,20 @@
+{
+  "_README": "Copy to config/usage-limits.json (private, gitignored) and fill from your Claude Settings > Usage page. Mirrors that page: 'usage_limit' = the spend limit that RESETS; 'credit' = the one-time Claude Code & Cowork credit that EXPIRES. The dashboard shows these values; it does NOT fetch real-time server quota (air-gapped, RL1). 'operator' + 'window' are for the local token analysis below the limits.",
+  "operator": "<your name>",
+  "plan": "<your plan, e.g. Enterprise / Max / Pro>",
+  "usage_limit": {
+    "label": "Spend limit",
+    "currency": "$",
+    "spent": 0,
+    "limit": 0,
+    "resets": null
+  },
+  "credit": {
+    "label": "Included credit",
+    "used_pct": null,
+    "expires": null,
+    "note": "A one-time credit for Claude Code and Cowork, applied before your usage limits. After it's used up, both features draw from your normal usage."
+  },
+  "token_limit": 0,
+  "window": { "mode": "days", "days": 7, "since": null, "until": null }
+}

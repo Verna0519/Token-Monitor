@@ -1,0 +1,100 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "aocc-personal-ai-coach/extraction.schema.json",
+  "title": "Per-session eight-domain capability-signal + BIAS extraction (Phase 2 sub-agent output)",
+  "description": "The contract each Phase-2 extraction sub-agent returns for ONE session. Signals are ABSTRACT (counts / behaviors / evidence-tier) — NEVER raw transcript snippets (style-fingerprint re-id risk, RL4-i). signal_tier is a SCORE and lives here only for the upward digest; it is NEVER echoed to the person (RL4-ii).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["session_ref", "domain_signals", "bias_flags", "coverage"],
+  "properties": {
+    "session_ref": {
+      "type": "string",
+      "description": "Opaque local reference to the session (index position or hash) — NOT the absolute path. Kept so the private layer can dig back in; never leaves the private layer."
+    },
+    "domain_signals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["DESIGN", "FRAMEWORK-SELECTION", "CODING", "TUNING", "CONTEXT-ENGINEERING", "EVAL", "ADVISORY", "CONTINUITY"],
+      "properties": {
+        "DESIGN": { "$ref": "#/$defs/domain_signal" },
+        "FRAMEWORK-SELECTION": { "$ref": "#/$defs/domain_signal" },
+        "CODING": { "$ref": "#/$defs/domain_signal" },
+        "TUNING": { "$ref": "#/$defs/domain_signal" },
+        "CONTEXT-ENGINEERING": { "$ref": "#/$defs/domain_signal" },
+        "EVAL": { "$ref": "#/$defs/domain_signal" },
+        "ADVISORY": { "$ref": "#/$defs/domain_signal" },
+        "CONTINUITY": { "$ref": "#/$defs/domain_signal" }
+      }
+    },
+    "bias_flags": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["bias", "observed", "self_correctable"],
+        "properties": {
+          "bias": {
+            "type": "string",
+            "description": "BIAS theme name from the donor lens1 empirically-grounded set (rewrite, not lift). Abstract theme, not a quote."
+          },
+          "observed": {
+            "type": "string",
+            "description": "Abstract description of the observed pattern (behavior/frequency) — NO raw quote, NO identity."
+          },
+          "self_correctable": {
+            "type": "boolean",
+            "description": "Whether the person appeared to self-correct the bias within the session."
+          }
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["signals_found", "extraction_completeness"],
+      "properties": {
+        "signals_found": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "How many of the eight domains had at least one observable signal in this session."
+        },
+        "extraction_completeness": {
+          "type": "string",
+          "enum": ["full", "partial", "sparse"],
+          "description": "Honest self-report of how much of the session was interpretable (RL4-iv honesty)."
+        }
+      }
+    }
+  },
+  "$defs": {
+    "domain_signal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["present", "signal_tier", "evidence_refs", "growth_hint"],
+      "properties": {
+        "present": {
+          "type": "boolean",
+          "description": "Whether any observable signal for this domain appeared in the session."
+        },
+        "signal_tier": {
+          "type": ["string", "null"],
+          "enum": ["intended", "structural", "actual", null],
+          "description": "Evidence-tier (intended < structural < actual). SCORE — upward digest only, NEVER echoed to the person. null when present=false."
+        },
+        "evidence_refs": {
+          "type": "array",
+          "description": "ABSTRACT refs only: counts / behaviors / tier-bearing observations. NEVER raw transcript snippets, file paths, repo names, or identity (RL4-i style-fingerprint guard).",
+          "items": { "type": "string" }
+        },
+        "growth_hint": {
+          "type": ["string", "null"],
+          "description": "Forward-looking, no-score vocabulary ('試著加強 X'). The ONLY field surfaced to the person (RL4-ii). Never contains a rung/tier/score word."
+        },
+        "strength": {
+          "type": ["string", "null"],
+          "description": "Forward-framed 'worth keeping up' note surfaced to the person alongside growth_hint (值得持續保持的做法／可以繼續…). NEVER retrospective praise (F3 / operator ruling #9) and NO score/rung/tier/level word (RL4-ii). zh-TW, full-width punctuation. null when nothing notable this session. OPTIONAL (not in required) so existing 22-session objects stay valid; additionalProperties stays false."
+        }
+      }
+    }
+  }
+}

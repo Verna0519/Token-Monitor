@@ -1,0 +1,17 @@
+# .gitattributes — pin LF on all text surfaces (portability fix, migration problems WSL-03 / P-W-03).
+#
+# Without this, a Windows-native clone (git default core.autocrlf=true) rewrites tracked text to
+# CRLF; when the same worktree is then driven from WSL / Git-Bash, bash chokes (`set: pipefail\r`)
+# and the python shebang breaks (`env: 'python3\r'`), so neither .sh gate can reach exit 0. Pinning
+# eol=lf keeps every clone LF regardless of the cloning git's autocrlf setting.
+#
+# NOTE: the deny-by-default .gitignore ignores dotfiles (`/.*`), so this file needs an explicit
+# un-ignore line `!/.gitattributes` in .gitignore section 2 before it can be tracked.
+
+* text=auto eol=lf
+*.sh text eol=lf
+*.py text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+*.md text eol=lf

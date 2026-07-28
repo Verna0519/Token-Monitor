@@ -1,0 +1,22 @@
+# path-mappings.yaml — TEMPLATE (the ONLY machine-specific indirection layer)
+#
+# This template carries GENERIC TOKENS only. Real absolute paths (/home, /Users, /mnt, ...) live
+# ONLY in the gitignored filled instance (config/path-mappings.filled.yaml), NEVER here.
+#
+# On-target:
+#   cp config/path-mappings.yaml config/path-mappings.filled.yaml
+#   $EDITOR config/path-mappings.filled.yaml   # set the real paths
+#
+# Resolution contract: scripts read the .filled instance; a missing / unset / unresolvable path
+# MUST flag loudly with a non-zero exit (validate-selfcontainment.sh asserts this), NEVER silent.
+
+# Root of the local Claude Code CLI transcripts (one jsonl per url-encoded working directory).
+# This is READ-ONLY input-corpus ingestion, not a ~/.claude runtime coupling (see ADR-0001 §1).
+# Write out the FULL path with your home folder spelled out — do NOT use the "~" shortcut, it is
+# not expanded here. On Linux/WSL a home folder looks like /home/<you>, on macOS like /Users/<you>;
+# put your real one in the .filled copy (never here in the template).
+CLAUDE_PROJECTS_ROOT: "<set me — full path to your .claude/projects folder, home spelled out>"
+
+# DEFERRED (not ingested in the Pilot): local Codex CLI transcripts (~/.codex/sessions).
+# Left as a generic token so a later pass can wire it without touching logic.
+CODEX_SESSIONS_ROOT: "<set me — absolute path to ~/.codex/sessions (DEFERRED)>"
