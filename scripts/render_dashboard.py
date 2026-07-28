@@ -469,19 +469,31 @@ __REFRESH_META__
   }
   function tileEl(k,v){ var t=h("div","tile"); t.appendChild(h("div","k",k)); t.appendChild(h("div","v",v)); return t; }
 
-  function curve(pts, onPick){
+  function curve(pts, onPick, opts){
+    opts = opts || {};
+    var yfmt = opts.yfmt || function(v){ return Math.round(v).toLocaleString(); };
+    var valLabel = opts.valLabel || function(p){ return Number(p.val||0).toLocaleString(); };
+    var tipFn = opts.tip || function(p){ return "<b>"+p.label+"</b><br>"+n(p.val)+"<br>out "+n(p.out)+" · "+p.msgs+" turns"; };
     var W=920,H=240,padL=52,padR=54,padT=16,padB=32, iw=W-padL-padR, ih=H-padT-padB;
-    var yMax=Math.max(1, Math.max.apply(null, pts.map(function(p){return p.val||0;}))*1.15);
     var m=pts.length;
+    var maxVal=Math.max.apply(null, pts.map(function(p){return p.val||0;}));
+    if(opts.refLine && opts.refLine.val>maxVal) maxVal=opts.refLine.val;
+    var yMax=Math.max(1e-9, (maxVal||0)*1.15);
     function X(i){ return padL+(m<=1? iw/2 : iw*i/(m-1)); }
     function Y(v){ return padT+ih-ih*(v/yMax); }
     var s=svg("svg",{viewBox:"0 0 "+W+" "+H, role:"img"});
     for(var t=0;t<=4;t++){ var v=yMax*t/4, y=Y(v);
       s.appendChild(svg("line",{x1:padL,y1:y,x2:W-padR,y2:y,stroke:"var(--grid)","stroke-width":1}));
       var lab=svg("text",{x:padL-8,y:y+4,"text-anchor":"end","class":"axis"});
-      lab.textContent=Math.round(v).toLocaleString(); s.appendChild(lab); }
+      lab.textContent=yfmt(v); s.appendChild(lab); }
     s.appendChild(svg("line",{x1:padL,y1:Y(0),x2:W-padR,y2:Y(0),stroke:"var(--baseline)","stroke-width":1}));
-    var lstep=Math.max(1, Math.ceil(m/12));   // thin x-labels when many days (bars stay per-day)
+    if(opts.refLine && opts.refLine.val>0){        // e.g. daily-average budget line
+      var ry=Y(opts.refLine.val);
+      s.appendChild(svg("line",{x1:padL,y1:ry,x2:W-padR,y2:ry,stroke:"var(--critical)","stroke-width":1,"stroke-dasharray":"5 3",opacity:0.75}));
+      var rlab=svg("text",{x:W-padR,y:ry-4,"text-anchor":"end","class":"axis",fill:"var(--critical)"});
+      rlab.textContent=opts.refLine.label; s.appendChild(rlab);
+    }
+    var lstep=Math.max(1, Math.ceil(m/12));   // thin x-labels when many days (points stay per-day)
     pts.forEach(function(p,i){ if(i%lstep!==0 && i!==m-1) return;
       var lab=svg("text",{x:X(i),y:H-10,"text-anchor":"middle","class":"axis"});
       lab.textContent=shortDate(p.label); s.appendChild(lab); });
@@ -498,14 +510,14 @@ __REFRESH_META__
       var c=svg("circle",{cx:X(i),cy:Y(p.val||0),r:4,fill:"var(--series)",stroke:"var(--surface)","stroke-width":2});
       var hit=svg("circle",{cx:X(i),cy:Y(p.val||0),r:15,fill:"transparent"}); hit.style.cursor="pointer";
       function sel(){ markers.forEach(function(mm){mm.setAttribute("r",4);}); c.setAttribute("r",7); if(onPick)onPick(p,i); }
-      hit.addEventListener("mousemove",function(e){ showTip(e,"<b>"+p.label+"</b><br>"+n(p.val)+" total"+(p.share!=null?(" · "+p.share.toFixed(1)+"% of range"):"")+"<br>out "+n(p.out)+" · "+p.msgs+" turns"); });
+      hit.addEventListener("mousemove",function(e){ showTip(e, tipFn(p,i)); });
       hit.addEventListener("mouseleave",hideTip);
       hit.addEventListener("click",sel);
       markers.push(c); s.appendChild(c); s.appendChild(hit);
     });
     if(m){ markers[m-1].setAttribute("r",7);
       var lp=pts[m-1]; var tl=svg("text",{x:X(m-1)-4,y:Y(lp.val||0)-12,"text-anchor":"end","class":"lastlabel"});
-      tl.textContent=Number(lp.val||0).toLocaleString(); s.appendChild(tl); }
+      tl.textContent=valLabel(lp); s.appendChild(tl); }
     return s;
   }
 
@@ -558,7 +570,16 @@ __REFRESH_META__
     if(!days.length) return;
     var card=h("div","card");
     card.appendChild(h("h2","","Usage over time"));
-    card.appendChild(h("p","cap","每日 token 用量（台灣時間，<b>以天為單位</b>，無活動的日子補 0）。用下面按鈕切換範圍；點一個時間點看該日用量。"));
+    // $ conversion (same basis as elsewhere): $ per token = spend limit / token_limit
+    var tlimC=(L.token_limit&&Number(L.token_limit)>0)?Number(L.token_limit):0;
+    var ulimC=(L.usage_limit&&Number(L.usage_limit.limit)>0)?Number(L.usage_limit.limit):0;
+    var rateC=(tlimC>0&&ulimC>0)?(ulimC/tlimC):0;
+    var curSym=(L.usage_limit&&L.usage_limit.currency)||"$";
+    var dailyBudget = ulimC>0 ? ulimC/30 : 0;   // 月額度日均
+    card.appendChild(h("p","cap", rateC>0
+      ? ("每日<b>估算花費（"+curSym+"）</b>＝當日 token × 你的實際費率；紅色虛線＝<b>月額度日均</b>（"+
+         curSym+ulimC.toLocaleString()+"÷30≈"+curSym+dailyBudget.toFixed(1)+"／日）。用按鈕切換範圍；點一天看<b>與前一日的增減</b>。")
+      : "每日 token 用量（台灣時間，以天為單位，無活動日補 0）。用按鈕切換範圍；點一天看與前一日的增減。"));
     // build the FULL daily series (window_since .. today), zero-filled; buttons re-slice it client-side
     var byDate={}; days.forEach(function(d){ byDate[d.date]=d; });
     function iso(dt){ return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0"); }
@@ -573,23 +594,40 @@ __REFRESH_META__
     var cur=new Date(startStr+"T00:00:00"), end=new Date(endStr+"T00:00:00"), guard=0;
     while(cur<=end && guard++<800){
       var key=iso(cur), d=byDate[key];
-      allPts.push(d ? {label:d.date,val:d.total,out:d.output_tokens,msgs:d.msgs}
-                    : {label:key,val:0,out:0,msgs:0});
+      allPts.push(d ? {label:d.date,tok:d.total,out:d.output_tokens,msgs:d.msgs}
+                    : {label:key,tok:0,out:0,msgs:0});
       cur.setDate(cur.getDate()+1);
     }
     var bar=h("div","rangebar");
     var chart=h("div");                 // curve container, re-rendered on range change
     var readout=h("div","readout");
-    function pick(p, rangeTotal){ readout.innerHTML="選取 <b>"+p.label+"</b> &mdash; total <b>"+n(p.val)+
-      "</b> &middot; output "+n(p.out)+" &middot; "+p.msgs+" turns"+
-      (rangeTotal>0? (" &middot; 佔此範圍 <b>"+(p.val/rangeTotal*100).toFixed(1)+"%</b>") : ""); }
+    function valOf(p){ return rateC>0 ? p.tok*rateC : p.tok; }
+    function fmtVal(p){ return rateC>0 ? usd(valOf(p)) : n(p.tok); }
+    function deltaHtml(p){
+      if(p.delta==null) return "（範圍首日，無前一日可比）";
+      if(!isFinite(p.delta)) return "前一日為 0 &rarr; <b>新增</b>";
+      var up=p.delta>=0; return "較前一日 <b style='color:"+(up?"var(--critical)":"var(--good)")+"'>"+
+        (up?"+":"−")+Math.abs(p.delta).toFixed(1)+"%</b>";
+    }
+    function pick(p){ readout.innerHTML="選取 <b>"+p.label+"</b> &mdash; "+fmtVal(p)+(rateC>0?" 估算":" tokens")+
+      " &middot; out "+n(p.out)+" &middot; "+p.msgs+" turns &middot; "+deltaHtml(p); }
     function draw(nDays){
       var pts = (nDays>0 && allPts.length>nDays) ? allPts.slice(allPts.length-nDays) : allPts.slice();
-      var rangeTotal = pts.reduce(function(a,p){return a+(p.val||0);},0);
-      pts.forEach(function(p){ p.share = rangeTotal>0 ? (p.val/rangeTotal*100) : 0; });
+      pts = pts.map(function(p){ return {label:p.label, tok:p.tok, out:p.out, msgs:p.msgs, val:valOf(p)}; });
+      pts.forEach(function(p,i){        // day-over-day change vs the previous day in this range
+        if(i===0){ p.delta=null; }
+        else { var prev=pts[i-1].val; p.delta = prev>0 ? ((p.val-prev)/prev*100) : (p.val>0? Infinity : 0); }
+      });
+      var opts={
+        yfmt: function(v){ return rateC>0 ? (curSym+(Math.round(v*10)/10)) : Math.round(v).toLocaleString(); },
+        valLabel: function(pp){ return rateC>0 ? usd(pp.val) : Number(pp.val||0).toLocaleString(); },
+        tip: function(pp){ return "<b>"+pp.label+"</b><br><b>"+fmtVal(pp)+"</b>"+(rateC>0?" 估算花費":" tokens")+
+          "<br>"+deltaHtml(pp)+"<br>"+n(pp.tok)+" tok · out "+n(pp.out)+" · "+pp.msgs+" turns"; }
+      };
+      if(rateC>0 && dailyBudget>0) opts.refLine={val:dailyBudget, label:"月額度日均 "+curSym+dailyBudget.toFixed(1)};
       chart.innerHTML="";
-      chart.appendChild(curve(pts, function(p){ pick(p, rangeTotal); }));
-      if(pts.length) pick(pts[pts.length-1], rangeTotal);
+      chart.appendChild(curve(pts, function(p){ pick(p); }, opts));
+      if(pts.length) pick(pts[pts.length-1]);
     }
     var ranges=[{n:3,label:"近 3 天"},{n:7,label:"近 7 天"},{n:30,label:"近一個月"}];
     var btns=[];
