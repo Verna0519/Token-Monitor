@@ -155,6 +155,12 @@ __REFRESH_META__
   .subdays{margin:0 0 8px 30px;border-left:2px solid var(--grid);padding-left:12px;}
   .subday{display:flex;justify-content:space-between;gap:12px;font-size:11.5px;color:var(--text2);padding:2px 0;font-variant-numeric:tabular-nums;}
   .subday .sd-date{color:var(--text);}
+  /* range filter buttons */
+  .rangebar{display:flex;gap:6px;margin:0 0 12px;flex-wrap:wrap;}
+  .rangebtn{border:1px solid var(--border);background:var(--surface);color:var(--text2);
+    border-radius:7px;padding:4px 13px;font-size:12.5px;cursor:pointer;font-family:inherit;}
+  .rangebtn:hover{border-color:var(--series);}
+  .rangebtn.active{background:var(--series);color:#fff;border-color:var(--series);}
   /* curve */
   svg{width:100%;height:auto;display:block;overflow:visible;}
   .axis{fill:var(--muted);font-size:11px;font-variant-numeric:tabular-nums;}
@@ -475,7 +481,9 @@ __REFRESH_META__
       var lab=svg("text",{x:padL-8,y:y+4,"text-anchor":"end","class":"axis"});
       lab.textContent=Math.round(v).toLocaleString(); s.appendChild(lab); }
     s.appendChild(svg("line",{x1:padL,y1:Y(0),x2:W-padR,y2:Y(0),stroke:"var(--baseline)","stroke-width":1}));
-    pts.forEach(function(p,i){ var lab=svg("text",{x:X(i),y:H-10,"text-anchor":"middle","class":"axis"});
+    var lstep=Math.max(1, Math.ceil(m/12));   // thin x-labels when many days (bars stay per-day)
+    pts.forEach(function(p,i){ if(i%lstep!==0 && i!==m-1) return;
+      var lab=svg("text",{x:X(i),y:H-10,"text-anchor":"middle","class":"axis"});
       lab.textContent=shortDate(p.label); s.appendChild(lab); });
     if(m>1){
       var area="M"+X(0)+" "+Y(0)+" ";
@@ -490,7 +498,7 @@ __REFRESH_META__
       var c=svg("circle",{cx:X(i),cy:Y(p.val||0),r:4,fill:"var(--series)",stroke:"var(--surface)","stroke-width":2});
       var hit=svg("circle",{cx:X(i),cy:Y(p.val||0),r:15,fill:"transparent"}); hit.style.cursor="pointer";
       function sel(){ markers.forEach(function(mm){mm.setAttribute("r",4);}); c.setAttribute("r",7); if(onPick)onPick(p,i); }
-      hit.addEventListener("mousemove",function(e){ showTip(e,"<b>"+p.label+"</b><br>"+n(p.val)+" total"+(p.share!=null?(" · "+p.share.toFixed(1)+"% of window"):"")+"<br>out "+n(p.out)+" · "+p.msgs+" turns"); });
+      hit.addEventListener("mousemove",function(e){ showTip(e,"<b>"+p.label+"</b><br>"+n(p.val)+" total"+(p.share!=null?(" · "+p.share.toFixed(1)+"% of range"):"")+"<br>out "+n(p.out)+" · "+p.msgs+" turns"); });
       hit.addEventListener("mouseleave",hideTip);
       hit.addEventListener("click",sel);
       markers.push(c); s.appendChild(c); s.appendChild(hit);
@@ -550,10 +558,8 @@ __REFRESH_META__
     if(!days.length) return;
     var card=h("div","card");
     card.appendChild(h("h2","","Usage over time"));
-    card.appendChild(h("p","cap","每日 token 用量（台灣時間，<b>涵蓋整個選取視窗、以天為單位</b>，無活動的日子補 0）。點一個時間點看該日用量。"));
-    var readout=h("div","readout");
-    // fill every calendar day across the SELECTED WINDOW (not just active days) so the
-    // x-axis is per-day and matches the window shown in the header.
+    card.appendChild(h("p","cap","每日 token 用量（台灣時間，<b>以天為單位</b>，無活動的日子補 0）。用下面按鈕切換範圍；點一個時間點看該日用量。"));
+    // build the FULL daily series (window_since .. today), zero-filled; buttons re-slice it client-side
     var byDate={}; days.forEach(function(d){ byDate[d.date]=d; });
     function iso(dt){ return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0"); }
     var scc=T.scope||{};
@@ -563,22 +569,38 @@ __REFRESH_META__
     else { var td=iso(new Date()); endStr = (td>days[days.length-1].date)? td : days[days.length-1].date; }
     if(startStr > days[0].date) startStr = days[0].date;                 // never hide an active day
     if(endStr < days[days.length-1].date) endStr = days[days.length-1].date;
-    var pts=[];
-    var cur=new Date(startStr+"T00:00:00"), end=new Date(endStr+"T00:00:00");
-    var guard=0;
+    var allPts=[];
+    var cur=new Date(startStr+"T00:00:00"), end=new Date(endStr+"T00:00:00"), guard=0;
     while(cur<=end && guard++<800){
       var key=iso(cur), d=byDate[key];
-      pts.push(d ? {label:d.date,val:d.total,out:d.output_tokens,msgs:d.msgs}
-                 : {label:key,val:0,out:0,msgs:0});
+      allPts.push(d ? {label:d.date,val:d.total,out:d.output_tokens,msgs:d.msgs}
+                    : {label:key,val:0,out:0,msgs:0});
       cur.setDate(cur.getDate()+1);
     }
-    var winTotal=(T.totals&&T.totals.total)||pts.reduce(function(a,p){return a+(p.val||0);},0);
-    pts.forEach(function(p){ p.share = winTotal>0 ? (p.val/winTotal*100) : 0; });
-    function pick(p){ readout.innerHTML="選取 <b>"+p.label+"</b> &mdash; total <b>"+n(p.val)+
-      "</b> &middot; output "+n(p.out)+" &middot; "+p.msgs+" turns &middot; 佔視窗 <b>"+p.share.toFixed(1)+"%</b>"; }
-    card.appendChild(curve(pts, pick));
-    card.appendChild(readout);
-    if(pts.length) pick(pts[pts.length-1]);
+    var bar=h("div","rangebar");
+    var chart=h("div");                 // curve container, re-rendered on range change
+    var readout=h("div","readout");
+    function pick(p, rangeTotal){ readout.innerHTML="選取 <b>"+p.label+"</b> &mdash; total <b>"+n(p.val)+
+      "</b> &middot; output "+n(p.out)+" &middot; "+p.msgs+" turns"+
+      (rangeTotal>0? (" &middot; 佔此範圍 <b>"+(p.val/rangeTotal*100).toFixed(1)+"%</b>") : ""); }
+    function draw(nDays){
+      var pts = (nDays>0 && allPts.length>nDays) ? allPts.slice(allPts.length-nDays) : allPts.slice();
+      var rangeTotal = pts.reduce(function(a,p){return a+(p.val||0);},0);
+      pts.forEach(function(p){ p.share = rangeTotal>0 ? (p.val/rangeTotal*100) : 0; });
+      chart.innerHTML="";
+      chart.appendChild(curve(pts, function(p){ pick(p, rangeTotal); }));
+      if(pts.length) pick(pts[pts.length-1], rangeTotal);
+    }
+    var ranges=[{n:3,label:"近 3 天"},{n:7,label:"近 7 天"},{n:30,label:"近一個月"}];
+    var btns=[];
+    ranges.forEach(function(rg){
+      var b=document.createElement("button"); b.type="button"; b.className="rangebtn"; b.textContent=rg.label;
+      b.addEventListener("click",function(){ btns.forEach(function(x){x.classList.remove("active");}); b.classList.add("active"); draw(rg.n); });
+      bar.appendChild(b); btns.push(b);
+    });
+    card.appendChild(bar); card.appendChild(chart); card.appendChild(readout);
+    var defIdx=2;                        // default: 近一個月（最寬，歷史都看得到）
+    btns[defIdx].classList.add("active"); draw(ranges[defIdx].n);
     app.appendChild(card);
   }
 
