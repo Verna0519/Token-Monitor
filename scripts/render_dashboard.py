@@ -391,6 +391,12 @@ __REFRESH_META__
     if(rate<=0){ tiles.appendChild(tileEl("cache read", n(tot.cache_read_input_tokens))); }
     tiles.appendChild(tileEl("assistant turns", n(tot.msgs)));
     card.appendChild(tiles);
+    if(rate>0 && ulim>0){
+      var estSpend=tot.total*rate, spendPct=Math.min(100, estSpend/ulim*100);
+      var sub="&asymp;"+usd(estSpend)+" / "+cur+ulim.toLocaleString()+" 月額度 &middot; 本視窗 token 換算的<b>估算</b>花費，"+
+        "非真實帳單（真實 spent 見最上方 Spend limit，或用 <code>-Cloud</code> 連外抓）";
+      card.appendChild(gaugeRow("本視窗估算花費 / 月額度 (est. spend vs monthly limit)", spendPct, sub, statusColor(spendPct)));
+    }
     var grand=tot.total||0, top=8;
     var denom = tlim > 0 ? tlim : grand;
     if((T.by_conversation||[]).length){
