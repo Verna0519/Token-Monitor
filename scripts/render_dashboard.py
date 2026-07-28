@@ -360,7 +360,8 @@ __REFRESH_META__
     var sc=T.scope||{}, tot=T.totals||{};
     var tlim = (L.token_limit && Number(L.token_limit) > 0) ? Number(L.token_limit) : 0;
     var pctBasis = tlim > 0
-      ? ("% = 佔可用 token 額度 (" + tlim.toLocaleString() + ") 的比例")
+      ? ("% = 佔 token_limit (" + tlim.toLocaleString() + ") 的比例 — 此為<b>自訂參考值</b>，"
+         + "方案的真實上限是上方的 $ 花費額度，Anthropic 並無官方 token 配額；在 config 可改")
       : "% = 佔本視窗總量的比例（在 config 設 token_limit 可改為佔額度%）";
     card.appendChild(h("p","cap",
       "counted "+(sc.files_counted||0)+" transcript file(s); nested sub-agent/workflow "+

@@ -1,5 +1,5 @@
 {
-  "_README": "Copy to config/usage-limits.json (private, gitignored) and fill from your Claude Settings > Usage page. Mirrors that page: 'usage_limit' = the spend limit that RESETS; 'credit' = the one-time Claude Code & Cowork credit that EXPIRES. The dashboard shows these values; it does NOT fetch real-time server quota (air-gapped, RL1). 'operator' + 'window' are for the local token analysis below the limits.",
+  "_README": "Copy to config/usage-limits.json (private, gitignored) and fill from your Claude Settings > Usage page. Mirrors that page: 'usage_limit' = the spend limit that RESETS; 'credit' = the one-time Claude Code & Cowork credit that EXPIRES. The dashboard shows these values; it does NOT fetch real-time server quota (air-gapped, RL1). 'operator' + 'window' are for the local token analysis below the limits. 'token_limit' is a SELF-SET reference denominator for the token % (there is no official Anthropic token quota — the real cap is the $ spend limit above); set it near your typical usage over the 'window' (e.g. 500000000) so the gauge is meaningful, or 0 to show '% of window total' instead.",
   "operator": "<your name>",
   "plan": "<your plan, e.g. Enterprise / Max / Pro>",
   "usage_limit": {
