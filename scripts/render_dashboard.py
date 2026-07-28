@@ -337,7 +337,7 @@ __REFRESH_META__
     app.appendChild(c2);
   }
 
-  function barBlock(rows, nameFn, tipFn, grand){
+  function barBlock(rows, nameFn, tipFn, grand, rate){
     var wrap=h("div");
     var max=Math.max.apply(null, rows.map(function(r){return r.total||0;}))||1;
     rows.forEach(function(r){
@@ -347,7 +347,10 @@ __REFRESH_META__
       var fill=h("div","bar-fill"); fill.style.width=Math.max(1,(r.total/max)*100).toFixed(1)+"%"; fill.title=tipFn(r);
       track.appendChild(fill);
       var share=grand>0? (r.total/grand*100):0;
-      var val=h("div","bar-val","<b>"+n(r.total)+"</b> <span class='pct'>"+share.toFixed(1)+"%</span> &middot; out "+n(r.output_tokens));
+      var valHtml = (rate>0)
+        ? ("<b>&asymp;"+usd(r.total*rate)+"</b> <span class='pct'>"+share.toFixed(1)+"%</span> &middot; "+n(r.total)+" tok &middot; out "+n(r.output_tokens))
+        : ("<b>"+n(r.total)+"</b> <span class='pct'>"+share.toFixed(1)+"%</span> &middot; out "+n(r.output_tokens));
+      var val=h("div","bar-val", valHtml);
       row.appendChild(nm); row.appendChild(track); row.appendChild(val);
       wrap.appendChild(row);
     });
@@ -359,23 +362,33 @@ __REFRESH_META__
     card.appendChild(h("h2","","Token usage &middot; who spent what"));
     var sc=T.scope||{}, tot=T.totals||{};
     var tlim = (L.token_limit && Number(L.token_limit) > 0) ? Number(L.token_limit) : 0;
+    var ulim = (L.usage_limit && Number(L.usage_limit.limit) > 0) ? Number(L.usage_limit.limit) : 0;
+    // $ per token: tie the money conversion to the SAME basis as token_limit
+    // (token_limit was derived so that it == the $ spend limit). 0 => money view off.
+    var rate = (ulim > 0 && tlim > 0) ? (ulim / tlim) : 0;
+    var cur = (L.usage_limit && L.usage_limit.currency) || "$";
     var pctBasis = tlim > 0
       ? ("% = 佔 token_limit (" + tlim.toLocaleString() + ") 的比例 — 此為<b>自訂參考值</b>，"
          + "方案的真實上限是上方的 $ 花費額度，Anthropic 並無官方 token 配額；在 config 可改")
       : "% = 佔本視窗總量的比例（在 config 設 token_limit 可改為佔額度%）";
+    var moneyBasis = rate > 0
+      ? (" &middot; <b>"+cur+" 為估算</b>：以 "+cur+ulim.toLocaleString()+" 花費額度 &divide; token_limit 換算"
+         + "（約 "+cur+(rate*1e6).toFixed(3)+"／百萬 token，你的實際費率）")
+      : "";
     card.appendChild(h("p","cap",
       "counted "+(sc.files_counted||0)+" transcript file(s); nested sub-agent/workflow "+
-      (sc.include_nested?"included":"excluded")+". "+pctBasis+". 'total' is mostly "+
+      (sc.include_nested?"included":"excluded")+". "+pctBasis+moneyBasis+". 'total' is mostly "+
       "cache_read (cheap re-reads); 'out' = generated tokens."));
     var tiles=h("div","tiles");
     tiles.appendChild(tileEl("total tokens", n(tot.total)));
+    if(rate>0){ tiles.appendChild(tileEl("≈ "+cur+" this window (est)", usd(tot.total*rate))); }
     if(tlim>0){
       var usedPct=Math.min(100,(tot.total/tlim)*100);
       tiles.appendChild(tileEl("of token limit", usedPct.toFixed(1)+"%"));
-    } else {
+    } else if(rate<=0){
       tiles.appendChild(tileEl("generated (output)", n(tot.output_tokens)));
     }
-    tiles.appendChild(tileEl("cache read", n(tot.cache_read_input_tokens)));
+    if(rate<=0){ tiles.appendChild(tileEl("cache read", n(tot.cache_read_input_tokens))); }
     tiles.appendChild(tileEl("assistant turns", n(tot.msgs)));
     card.appendChild(tiles);
     var grand=tot.total||0, top=8;
@@ -384,19 +397,19 @@ __REFRESH_META__
       card.appendChild(h("div","sectlead","<b>By conversation</b> &mdash; per chat (top "+top+")"));
       card.appendChild(barBlock(T.by_conversation.slice(0,top),
         function(r){return r.title||(r.session||"").slice(0,12);},
-        function(r){return (r.title||r.session)+" — "+n(r.total)+" total, "+r.msgs+" turns";}, denom));
+        function(r){return (r.title||r.session)+" — "+n(r.total)+" total, "+r.msgs+" turns";}, denom, rate));
     }
     if((T.by_project||[]).length){
       card.appendChild(h("div","sectlead","<b>By project</b> &mdash; per working directory (top "+top+")"));
       card.appendChild(barBlock(T.by_project.slice(0,top),
         function(r){var p=String(r.project||"");return p.replace(/[\\/]+$/,"").split(/[\\/]/).pop()||p;},
-        function(r){return r.project+" — "+n(r.total)+" total";}, denom));
+        function(r){return r.project+" — "+n(r.total)+" total";}, denom, rate));
     }
     if((T.by_skill||[]).length){
       card.appendChild(h("div","sectlead","<b>By skill</b> &mdash; while each skill was active (top "+top+")"));
       card.appendChild(barBlock(T.by_skill.slice(0,top),
         function(r){return r.skill;},
-        function(r){return r.skill+" — "+n(r.total)+" total, "+r.msgs+" turns";}, denom));
+        function(r){return r.skill+" — "+n(r.total)+" total, "+r.msgs+" turns";}, denom, rate));
     }
     app.appendChild(card);
   }
@@ -489,9 +502,20 @@ __REFRESH_META__
     if(!days.length) return;
     var card=h("div","card");
     card.appendChild(h("h2","","Usage over time"));
-    card.appendChild(h("p","cap","每日 token 用量（台灣時間）。點一個時間點看該日用量。"));
+    card.appendChild(h("p","cap","每日 token 用量（台灣時間，<b>以天為單位</b>，無活動的日子補 0）。點一個時間點看該日用量。"));
     var readout=h("div","readout");
-    var pts=days.map(function(d){return {label:d.date,val:d.total,out:d.output_tokens,msgs:d.msgs};});
+    // fill every calendar day between the first and last active day so the x-axis is per-day
+    var byDate={}; days.forEach(function(d){ byDate[d.date]=d; });
+    function iso(dt){ return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0"); }
+    var pts=[];
+    var cur=new Date(days[0].date+"T00:00:00"), end=new Date(days[days.length-1].date+"T00:00:00");
+    var guard=0;
+    while(cur<=end && guard++<1000){
+      var key=iso(cur), d=byDate[key];
+      pts.push(d ? {label:d.date,val:d.total,out:d.output_tokens,msgs:d.msgs}
+                 : {label:key,val:0,out:0,msgs:0});
+      cur.setDate(cur.getDate()+1);
+    }
     function pick(p){ readout.innerHTML="選取 <b>"+p.label+"</b> &mdash; total <b>"+n(p.val)+
       "</b> &middot; output "+n(p.out)+" &middot; "+p.msgs+" turns"; }
     card.appendChild(curve(pts, pick));
@@ -526,6 +550,7 @@ __REFRESH_META__
       "<div><b>total</b> — 該範圍全部 token（含快取，數字大屬正常）</div>"+
       "<div><b>output</b>（列上標 <b>out</b>）— 模型實際生成的 token</div>"+
       "<div><b>%</b> — token 各列佔『可用額度』(config token_limit) 或視窗總量的比例</div>"+
+      "<div><b>&asymp;$</b>（各列）— 以 $ 花費額度 &divide; token_limit 換算的<b>估算</b>花費（你的實際費率）</div>"+
       "<div><b>cache read</b> — 每回合重讀的上下文（計費便宜）</div>"+
       "<div><b>turns</b> — assistant 回合數</div>"+
       "<div><b>usage limit / credit %</b> — 對照 Claude Usage 頁、由你填入 config（非即時抓取）</div>"+

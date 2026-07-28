@@ -44,6 +44,26 @@ token 的 `%` 是對照一個**你自訂的參考值** `token_limit`，只是為
 - `$` 那兩塊（Spend limit / credit）請照你 Claude Usage 頁的數字手填；**連外抓真實 $ 需要
   Analytics API key，只有企業版 Primary Owner 能產**（見最後一節）。
 
+### 量表顏色（gauge）
+
+所有量表（Spend limit、credit、token）依使用百分比分四段上色：
+
+| 顏色 | 區間 | 意思 |
+|------|------|------|
+| 🟩 綠 | `< 50%` | 充裕 |
+| 🟨 黃 | `50–75%` | 過半、留意 |
+| 🟧 橙 | `75–90%` | 接近上限 |
+| 🟥 紅 | `≥ 90%` | 幾乎/已滿 |
+
+門檻與色值集中在 `scripts/render_dashboard.py`：門檻在 `statusColor()`，色值在 CSS 變數
+`--good / --warn / --high / --critical`，要微調改這兩處即可。
+
+### Token 區塊用「錢」表示
+
+「Token usage · who spent what」每一列除了 token 數，也會顯示 **≈$ 估算花費**：以你的
+**$ 花費額度 ÷ `token_limit`** 當每-token 單價（即你的實際費率，約 $0.08／百萬 token）× 該列 token 數。
+這是**估算**（`≈`），只有在 config 同時有 `usage_limit.limit` 與 `token_limit` 時才顯示；否則退回純 token 數。
+
 ---
 
 ## 安裝手冊
