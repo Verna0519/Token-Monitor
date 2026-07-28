@@ -126,6 +126,9 @@ __REFRESH_META__
   .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin:18px 0;}
   .card h2{font-size:14px;margin:0 0 2px;font-weight:620;}
   .card .cap{color:var(--text2);font-size:12px;margin:0 0 14px;}
+  .scopenote{font-size:12px;line-height:1.55;color:var(--text);background:rgba(250,178,25,.12);
+    border:1px solid rgba(250,178,25,.55);border-radius:8px;padding:9px 12px;margin:0 0 12px;}
+  .scopenote code{background:var(--grid);padding:1px 5px;border-radius:4px;font-size:11px;}
   /* gauges */
   .gauge{margin:16px 0;}
   .gauge-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;gap:10px;}
@@ -336,7 +339,7 @@ __REFRESH_META__
     c1.appendChild(h("p","cap", (fromCloud
       ? "spent 由 Enterprise Analytics API 連外抓取；limit / resets 由 <code>config/usage-limits.json</code> 提供。"
       : "數值由你填入 <code>config/usage-limits.json</code>（air-gapped）。加 <code>-Cloud</code> 可連外抓真實 spent。")+
-      " 下方是本機 token 分析。"));
+      " 這裡的 $ 是<b>整個帳號、所有產品</b>（Chat + Cowork + Claude Code）；下方的 token 分析<b>只含 Claude Code CLI</b>，兩者範圍不同。"));
     c1.appendChild(fetchedLine());
     app.appendChild(c1);
 
@@ -385,6 +388,11 @@ __REFRESH_META__
   function renderTokenBars(){
     var card=h("div","card");
     card.appendChild(h("h2","","Token usage &middot; who spent what"));
+    card.appendChild(h("div","scopenote",
+      "⚠️ <b>涵蓋範圍：僅本機 Claude Code CLI 對話記錄</b>（<code>~/.claude/projects</code>）。"+
+      "Chat／Cowork／其他產品的用量<b>不在內</b> —— 那些只出現在 claude.ai 的 Usage 頁，"+
+      "或需 <code>-Cloud</code> 連外抓。因此本區的每日與總額和 Usage 頁的「Daily spend by product」"+
+      "<b>本來就不會一致</b>（那是全部產品的 $）。沒掃到不代表沒用。"));
     var sc=T.scope||{}, tot=T.totals||{};
     var tlim = (L.token_limit && Number(L.token_limit) > 0) ? Number(L.token_limit) : 0;
     var ulim = (L.usage_limit && Number(L.usage_limit.limit) > 0) ? Number(L.usage_limit.limit) : 0;
