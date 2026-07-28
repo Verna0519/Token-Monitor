@@ -29,6 +29,36 @@
 | Claude Code and Cowork credit | `config/usage-limits.json`，**手動填** | ❌ 同上 |
 | Daily spend by product（真實每日 $） | Claude Enterprise Analytics API，**連外** | 只有設了 `ANALYTICS_API_KEY` 才有 |
 
+### 涵蓋範圍與抓不到的東西（為何和 claude.ai Usage 頁不一致）
+
+**這個工具只讀「本機 Claude Code CLI」的對話記錄（`~/.claude/projects/**/*.jsonl`）。**
+claude.ai 的 Usage 頁是「**整個帳號、所有產品**」的真實 $（Chat + Cowork + Claude Code 一起算）。
+兩者範圍不同，所以**每日與總額本來就不會一致，這不是 bug**：
+
+| | claude.ai Usage 頁 | 本工具 |
+|---|---|---|
+| 涵蓋 | 全部產品：Chat + Cowork + Claude Code | **只有 Claude Code CLI** |
+| 單位 | 真實 $ | 本機 token（＋估算 $） |
+| 來源 | Anthropic 伺服器 | 本機 `~/.claude/projects` |
+
+**本機抓不到的東西（無論如何都拿不到本機資料）：**
+
+- **Chat / Cowork 的用量** —— 那些在 claude.ai 網頁／桌機 App 產生，不寫進 CLI transcript。
+- **真實每產品 $ 花費**（Usage 頁那張 Daily spend by product）。
+- **即時伺服器額度 / 真實 spent**（上方 $ 區是你手填的，非即時）。
+
+> 沒掃到 ≠ 沒用。某天在本工具是 0、在 Usage 頁有花費，代表那天你用的是 Chat/Cowork 而非 Claude Code CLI。
+
+### 權限聲明（連外抓真實 $ 需要什麼）
+
+要讓數字和 claude.ai Usage 頁一致（真實、全產品 $），**唯一方法**是連 Claude Enterprise
+**Analytics API**（`tokens -Cloud`）。這需要一把 API key，而且：
+
+- **只有企業版 Primary Owner 能簽發**這把 key（`claude.ai > Organization settings > API`，scope `read:analytics`）。
+- **你不是 Primary Owner 就無法自行取得** —— 必須向擁有者申請；本專案作者／使用者**無權簽發**。
+- key 只放在本機 `.env`（gitignored），**絕不進 Git、絕不外傳**；本工具不代管、不要求你交出任何 key。
+- **沒有 key 時**：連外腳本自動略過（no-op），儀表板維持**純本機 / air-gapped**，只顯示 Claude Code CLI 的 token 分析與你手填的 $。這是預設、也是安全狀態。
+
 **關於 token 百分比（重要）：** 訂閱方案的真實上限是 **$ 花費額度**（例如 Usage 頁的
 「Spend limit $150／100% used」），**Anthropic 沒有官方的 token 配額可抓**。所以儀表板裡
 token 的 `%` 是對照一個**你自訂的參考值** `token_limit`，只是為了讓進度條有意義：
