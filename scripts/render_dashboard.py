@@ -332,7 +332,7 @@ __REFRESH_META__
     var cpct=(cr.used_pct!=null)? Number(cr.used_pct) : pctOf(cr.used,cr.total);
     var csub=(cr.expires? whenInfo(cr.expires,"expires") : "expiry not set");
     if(cpct==null) csub="在 config/usage-limits.json 填 credit.used_pct / expires";
-    c2.appendChild(gaugeRow(cr.label||"Included credit", cpct, csub, "var(--series)"));
+    c2.appendChild(gaugeRow(cr.label||"Included credit", cpct, csub, statusColor(cpct==null?0:cpct)));
     c2.appendChild(fetchedLine());
     app.appendChild(c2);
   }
