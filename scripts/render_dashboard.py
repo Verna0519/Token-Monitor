@@ -448,7 +448,7 @@ __REFRESH_META__
       var c=svg("circle",{cx:X(i),cy:Y(p.val||0),r:4,fill:"var(--series)",stroke:"var(--surface)","stroke-width":2});
       var hit=svg("circle",{cx:X(i),cy:Y(p.val||0),r:15,fill:"transparent"}); hit.style.cursor="pointer";
       function sel(){ markers.forEach(function(mm){mm.setAttribute("r",4);}); c.setAttribute("r",7); if(onPick)onPick(p,i); }
-      hit.addEventListener("mousemove",function(e){ showTip(e,"<b>"+p.label+"</b><br>"+n(p.val)+" total<br>out "+n(p.out)+" · "+p.msgs+" turns"); });
+      hit.addEventListener("mousemove",function(e){ showTip(e,"<b>"+p.label+"</b><br>"+n(p.val)+" total"+(p.share!=null?(" · "+p.share.toFixed(1)+"% of window"):"")+"<br>out "+n(p.out)+" · "+p.msgs+" turns"); });
       hit.addEventListener("mouseleave",hideTip);
       hit.addEventListener("click",sel);
       markers.push(c); s.appendChild(c); s.appendChild(hit);
@@ -530,8 +530,10 @@ __REFRESH_META__
                  : {label:key,val:0,out:0,msgs:0});
       cur.setDate(cur.getDate()+1);
     }
+    var winTotal=(T.totals&&T.totals.total)||pts.reduce(function(a,p){return a+(p.val||0);},0);
+    pts.forEach(function(p){ p.share = winTotal>0 ? (p.val/winTotal*100) : 0; });
     function pick(p){ readout.innerHTML="選取 <b>"+p.label+"</b> &mdash; total <b>"+n(p.val)+
-      "</b> &middot; output "+n(p.out)+" &middot; "+p.msgs+" turns"; }
+      "</b> &middot; output "+n(p.out)+" &middot; "+p.msgs+" turns &middot; 佔視窗 <b>"+p.share.toFixed(1)+"%</b>"; }
     card.appendChild(curve(pts, pick));
     card.appendChild(readout);
     if(pts.length) pick(pts[pts.length-1]);
@@ -567,6 +569,10 @@ __REFRESH_META__
       "<div><b>&asymp;$</b>（各列）— 以 $ 花費額度 &divide; token_limit 換算的<b>估算</b>花費（你的實際費率）</div>"+
       "<div><b>cache read</b> — 每回合重讀的上下文（計費便宜）</div>"+
       "<div><b>turns</b> — assistant 回合數</div>"+
+      "<div><b>By conversation</b> — 依<b>對話 (session)</b> 分組：一段 chat 的全部 token</div>"+
+      "<div><b>By project</b> — 依<b>工作目錄 (cwd)</b> 分組：同一個專案資料夾底下的 token</div>"+
+      "<div><b>By skill</b> — 依<b>當下啟用的 skill</b> 分組；沒掛 skill 的算 (no skill)。"+
+        "子代理 / workflow 目前<b>不計入</b>（nested excluded）</div>"+
       "<div><b>usage limit / credit %</b> — 對照 Claude Usage 頁、由你填入 config（非即時抓取）</div>"+
       "<div>gauge 顏色：<span class='swatch' style='background:var(--good)'></span>&lt;50% "+
         "<span class='swatch' style='background:var(--warn)'></span>50–75% "+
