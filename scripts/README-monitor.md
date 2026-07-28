@@ -194,6 +194,16 @@ per-product spend (chat / claude_code / cowork) from the Claude Enterprise Analy
    Watch-MonitorDashboard -Every 300 -Cloud   # or auto-refetch every 5 min
    ```
 
+**One-click "open = refresh":** double-click **`scripts/open-monitor.cmd`** (or make a desktop
+shortcut to it). It re-runs the fetch, rebuilds the HTML, and opens it — so *opening* the monitor
+always shows current data. Uses `%~dp0`, so no path is hardcoded.
+
+**Fetch only YOUR spend (not the whole org):** the Analytics cost API is org-wide. To scope it to
+one user, set `"analytics_user_id"` in `config/usage-limits.json` to your Claude user id (or pass
+`python scripts\fetch_usage_cloud.py --user-id <id>` for a one-off). Only the Enterprise Primary
+Owner can mint the key, so if you're not the owner, ask them — and prefer the per-user filter so an
+org-wide key isn't pulling everyone's data into your dashboard.
+
 Without the key, `fetch_usage_cloud.py` no-ops and the dashboard stays air-gapped — the
 "last fetched" line then reads "未連外抓取（手動 config）".
 

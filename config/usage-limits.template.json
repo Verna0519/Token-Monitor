@@ -16,5 +16,6 @@
     "note": "A one-time credit for Claude Code and Cowork, applied before your usage limits. After it's used up, both features draw from your normal usage."
   },
   "token_limit": 0,
+  "analytics_user_id": null,
   "window": { "mode": "days", "days": 7, "since": null, "until": null }
 }

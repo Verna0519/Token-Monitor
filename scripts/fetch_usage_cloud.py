@@ -79,12 +79,25 @@ def load_window_from_config():
     return None
 
 
-def build_query(since, until, bucket, page):
+def load_user_id_from_config():
+    """Optional analytics_user_id in config/usage-limits.json → default --user-id (fetch only your own spend)."""
+    if not os.path.isfile(LIMITS):
+        return None
+    try:
+        v = (json.load(open(LIMITS, encoding="utf-8")) or {}).get("analytics_user_id")
+    except (OSError, json.JSONDecodeError):
+        return None
+    return str(v).strip() if v else None
+
+
+def build_query(since, until, bucket, page, user_id=None):
     # list params use bracket notation, repeated per value
     pairs = [("starting_at", since), ("bucket_width", bucket),
              ("group_by[]", "product"), ("group_by[]", "model")]
     if until:
         pairs.append(("ending_at", until))
+    if user_id:
+        pairs.append(("user_ids[]", user_id))   # only your own usage, not the whole org
     if page:
         pairs.append(("page", page))
     return urllib.parse.urlencode(pairs)
@@ -141,9 +154,13 @@ def main():
     ap.add_argument("--until", default=None, help="window end YYYY-MM-DD (max span 31 days)")
     ap.add_argument("--bucket", default="1d", choices=["1d", "1h", "1m"])
     ap.add_argument("--out", default=DEFAULT_OUT)
+    ap.add_argument("--user-id", default=None,
+                    help="filter to ONE Claude user id (your own) instead of the whole org; "
+                         "defaults to analytics_user_id in config/usage-limits.json")
     ap.add_argument("--print-request", action="store_true",
                     help="print the request URL that WOULD be sent (no key/network) and exit")
     args = ap.parse_args()
+    user_id = args.user_id or load_user_id_from_config()
 
     now = datetime.now(timezone.utc)
     if args.since:
@@ -155,12 +172,13 @@ def main():
             since = MIN_DATE
     until = f"{args.until}T00:00:00Z" if args.until else None
 
-    query = build_query(since, until, args.bucket, page=None)
+    query = build_query(since, until, args.bucket, page=None, user_id=user_id)
     url = f"{API_BASE}{COST_PATH}?{query}"
 
     if args.print_request:
         print("GET " + url)
         print("headers: x-api-key: <ANALYTICS_API_KEY>, anthropic-version: " + API_VERSION)
+        print("user filter: " + (user_id if user_id else "(none - whole org)"))
         return
 
     key = os.environ.get("ANALYTICS_API_KEY", "").strip()
@@ -177,7 +195,7 @@ def main():
         guard += 1
         if guard > 50:
             die("pagination guard tripped (>50 pages) — aborting")
-        u = f"{API_BASE}{COST_PATH}?{build_query(since, until, args.bucket, page)}"
+        u = f"{API_BASE}{COST_PATH}?{build_query(since, until, args.bucket, page, user_id=user_id)}"
         pg = request_page(u, key)
         pages.append(pg)
         if pg.get("has_more") and pg.get("next_page"):
