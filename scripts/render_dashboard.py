@@ -508,15 +508,23 @@ __REFRESH_META__
     if(!days.length) return;
     var card=h("div","card");
     card.appendChild(h("h2","","Usage over time"));
-    card.appendChild(h("p","cap","每日 token 用量（台灣時間，<b>以天為單位</b>，無活動的日子補 0）。點一個時間點看該日用量。"));
+    card.appendChild(h("p","cap","每日 token 用量（台灣時間，<b>涵蓋整個選取視窗、以天為單位</b>，無活動的日子補 0）。點一個時間點看該日用量。"));
     var readout=h("div","readout");
-    // fill every calendar day between the first and last active day so the x-axis is per-day
+    // fill every calendar day across the SELECTED WINDOW (not just active days) so the
+    // x-axis is per-day and matches the window shown in the header.
     var byDate={}; days.forEach(function(d){ byDate[d.date]=d; });
     function iso(dt){ return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0"); }
+    var scc=T.scope||{};
+    var startStr = scc.window_since ? String(scc.window_since).slice(0,10) : days[0].date;
+    var endStr;
+    if(scc.window_until){ endStr = String(scc.window_until).slice(0,10); }
+    else { var td=iso(new Date()); endStr = (td>days[days.length-1].date)? td : days[days.length-1].date; }
+    if(startStr > days[0].date) startStr = days[0].date;                 // never hide an active day
+    if(endStr < days[days.length-1].date) endStr = days[days.length-1].date;
     var pts=[];
-    var cur=new Date(days[0].date+"T00:00:00"), end=new Date(days[days.length-1].date+"T00:00:00");
+    var cur=new Date(startStr+"T00:00:00"), end=new Date(endStr+"T00:00:00");
     var guard=0;
-    while(cur<=end && guard++<1000){
+    while(cur<=end && guard++<800){
       var key=iso(cur), d=byDate[key];
       pts.push(d ? {label:d.date,val:d.total,out:d.output_tokens,msgs:d.msgs}
                  : {label:key,val:0,out:0,msgs:0});
