@@ -85,12 +85,29 @@ tokens
 
 ---
 
+## 重新抓取最新資料（最常用）
+
+**從任何一個新的 PowerShell 視窗貼上這一行**，就會重讀你當下的對話記錄 → 重算 → 重建 HTML →
+開啟（把路徑換成你自己 clone 的位置）：
+
+```powershell
+cd "C:\path\to\Token-Monitor\aocc-personal-ai-coach"; . .\scripts\monitor.ps1; tokens
+```
+
+之後在**同一個視窗**，只要打 `tokens` 就會再抓一次最新的（每跑一次都重讀 `~/.claude/projects`）。
+
+> **重點：** 儀表板是靜態 HTML 快照 —— 在瀏覽器**按 F5 不會抓到新資料**，一定要用 `tokens`
+> （或雙擊 `scripts\open-monitor.cmd`）重新產生才會是最新的。想讓開著的分頁自動更新，用
+> `Watch-MonitorDashboard -Every 300`（每 5 分鐘自動重抓＋重整，Ctrl+C 停）。
+
+---
+
 ## 日常使用（PowerShell）
 
 ```powershell
 . .\scripts\monitor.ps1     # 每個新 shell 載入一次
 
-tokens                      # 預設區間（config 的 window）
+tokens                      # 預設區間（config 的 window）；每跑一次都重抓最新資料
 tokens -Today               # 今天（台灣時間）
 tokens -Week                # 近 7 天
 tokens -Month               # 近 30 天
