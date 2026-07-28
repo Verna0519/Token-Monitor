@@ -98,7 +98,7 @@ __REFRESH_META__
     --page:#f9f9f7; --surface:#fcfcfb; --text:#0b0b0b; --text2:#52514e; --muted:#898781;
     --grid:#e1e0d9; --baseline:#c3c2b7; --border:rgba(11,11,11,.10);
     --series:#2a78d6; --series-soft:rgba(42,120,214,.16);
-    --good:#0ca30c; --warn:#fab219; --critical:#d03b3b;
+    --good:#0ca30c; --warn:#fab219; --high:#ef7d1a; --critical:#d03b3b;
   }
   @media (prefers-color-scheme: dark){
     :root:where(:not([data-theme="light"])){
@@ -229,7 +229,7 @@ __REFRESH_META__
   function showTip(e,html){ tip.innerHTML=html; tip.style.opacity="1"; tip.style.left=(e.clientX+12)+"px"; tip.style.top=(e.clientY+12)+"px"; }
   function hideTip(){ tip.style.opacity="0"; }
 
-  function statusColor(pct){ if(pct>=90) return "var(--critical)"; if(pct>=70) return "var(--warn)"; return "var(--good)"; }
+  function statusColor(pct){ if(pct>=90) return "var(--critical)"; if(pct>=75) return "var(--high)"; if(pct>=50) return "var(--warn)"; return "var(--good)"; }
 
   function pctOf(a,b){ return (a!=null && b>0)? Math.min(100,(a/b)*100) : null; }
   function pctText(p){ return (p>=100)?"100":(Number.isInteger(p)?String(p):p.toFixed(1)); }
@@ -529,8 +529,9 @@ __REFRESH_META__
       "<div><b>cache read</b> — 每回合重讀的上下文（計費便宜）</div>"+
       "<div><b>turns</b> — assistant 回合數</div>"+
       "<div><b>usage limit / credit %</b> — 對照 Claude Usage 頁、由你填入 config（非即時抓取）</div>"+
-      "<div>gauge 顏色：<span class='swatch' style='background:var(--good)'></span>&lt;70% "+
-        "<span class='swatch' style='background:var(--warn)'></span>70–90% "+
+      "<div>gauge 顏色：<span class='swatch' style='background:var(--good)'></span>&lt;50% "+
+        "<span class='swatch' style='background:var(--warn)'></span>50–75% "+
+        "<span class='swatch' style='background:var(--high)'></span>75–90% "+
         "<span class='swatch' style='background:var(--critical)'></span>&ge;90%</div>";
     card.appendChild(g); app.appendChild(card);
   }
