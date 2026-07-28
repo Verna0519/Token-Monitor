@@ -267,7 +267,8 @@ __REFRESH_META__
       var api = M.cloud.data_refreshed_at ? (" · API 資料更新 "+String(M.cloud.data_refreshed_at).slice(0,16).replace("T"," ")) : "";
       e.innerHTML="最後抓取 (last fetched): <b>"+M.cloud.generated_at+"</b>"+api;
     } else {
-      e.innerHTML="最後抓取 (last fetched): <span class='muted'>未連外抓取（手動 config；用 -Cloud 連外抓）</span>";
+      e.innerHTML="<span class='muted'>此區 $ 為<b>手動填入</b> — 要更新請改 "+
+        "<code>config/usage-limits.json</code>（或設 ANALYTICS_API_KEY 後用 <code>-Cloud</code> 自動連外抓）。</span>";
     }
     return e;
   }
@@ -523,7 +524,7 @@ __REFRESH_META__
     g.innerHTML=
       "<div><b>total</b> — 該範圍全部 token（含快取，數字大屬正常）</div>"+
       "<div><b>output</b>（列上標 <b>out</b>）— 模型實際生成的 token</div>"+
-      "<div><b>%</b> — 佔視窗總量的百分比佔比</div>"+
+      "<div><b>%</b> — token 各列佔『可用額度』(config token_limit) 或視窗總量的比例</div>"+
       "<div><b>cache read</b> — 每回合重讀的上下文（計費便宜）</div>"+
       "<div><b>turns</b> — assistant 回合數</div>"+
       "<div><b>usage limit / credit %</b> — 對照 Claude Usage 頁、由你填入 config（非即時抓取）</div>"+
