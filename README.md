@@ -33,11 +33,14 @@
 「Spend limit $150／100% used」），**Anthropic 沒有官方的 token 配額可抓**。所以儀表板裡
 token 的 `%` 是對照一個**你自訂的參考值** `token_limit`，只是為了讓進度條有意義：
 
-- 目前預設 `token_limit = 500,000,000`（5 億），是抓「大約一週用量」的量級當參考 —— 儀表板上
-  的 `(500,000,000)` 數字會標出來，不會誤導。
-- **想改成別的數字**：編輯 `config/usage-limits.json` 的 `"token_limit"`，下次開啟就套用。
-  - 想讓 token 進度條「貼近你的實際週用量、接近滿」→ 設成略高於你一週的 total（例如 4~5 億）。
-  - 想改回「佔本視窗總量的百分比」→ 設成 `0`。
+- 目前的 `token_limit` 是把 **$150 月額度換算成 token**：用「你實際花 ~$150／月、實際用掉多少
+  token」的**實際費率**（快取重＋企業/credit 折扣後，約 $0.08／百萬 token）回推，得 **≈1,830,000,000
+  （18.3 億）／月**。儀表板上的 `(1,830,000,000)` 數字會標出來，不會誤導。
+  - 為什麼不用 Anthropic 清單價換算？因為你光 7 天的 token 量在清單價就要約 $278 > 月上限 $150，
+    代表你走的是折扣／credit 價；用清單價換算（$150≈2.3 億）會**低估**你的真實額度、讓錶爆滿。
+  - 這是個月額度；視窗預設 7 天，所以錶約顯示「這週用掉月額度的 ~1/4」。想看整月 → `tokens -Month`。
+- **想改成別的數字**：編輯 `config/usage-limits.json` 的 `"token_limit"`，下次開啟就套用
+  （設 `0` = 改回「佔本視窗總量的百分比」）。
 - `$` 那兩塊（Spend limit / credit）請照你 Claude Usage 頁的數字手填；**連外抓真實 $ 需要
   Analytics API key，只有企業版 Primary Owner 能產**（見最後一節）。
 
@@ -177,8 +180,10 @@ config\usage-limits.json` → `. .\scripts\monitor.ps1` → `tokens`. Or make a 
 **Current state:** the **token** section is live from local transcripts on every run; the **$ /
 credit** blocks are **manually filled** in `config/usage-limits.json` (mirror your Usage page).
 There is **no official Anthropic token quota** — the real cap is the **$ spend limit** — so the
-token `%` is measured against a **self-set** `token_limit` (default `500,000,000`, shown on the face;
-change it in config, or set `0` for "% of window total"). Real per-product **$** requires an
+token `%` is measured against a **self-set** `token_limit` (currently `1,830,000,000`, i.e. the $150
+monthly limit converted at your *effective* rate — your 7d volume would list at ~$278 > $150, so you
+are on discounted/credit pricing and list-price conversion understates your real allowance; shown on
+the face; change it in config, or set `0` for "% of window total"). Real per-product **$** requires an
 Enterprise Analytics API key that only a Primary Owner can mint (`tokens -Cloud`). Full ops manual:
 [`scripts/README-monitor.md`](scripts/README-monitor.md). This repo is also the
 `aocc-personal-ai-coach` agent — see [`CLAUDE.md`](CLAUDE.md).
