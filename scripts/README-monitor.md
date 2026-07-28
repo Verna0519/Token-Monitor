@@ -172,6 +172,39 @@ The scripts read `~/.claude/projects` (the Claude Code transcripts) **read-only*
 
 ---
 
+## Enabling the cloud fetch (real per-product $ spend)
+
+By default the dashboard is fully local (air-gapped) and shows no real $. To pull real
+per-product spend (chat / claude_code / cowork) from the Claude Enterprise Analytics API:
+
+1. **Get an Analytics API key.** The Enterprise **Primary Owner** creates it at
+   `claude.ai > Organization settings > API` (enable public API access; scope `read:analytics`).
+   Cost/usage figures are real only on **usage-based** Enterprise plans (seat-based plans show
+   credit usage only).
+2. **Put it in `.env`** (create from the template first if needed). Edit the line — no quotes, no
+   spaces — and save:
+   ```
+   ANALYTICS_API_KEY=<your key>
+   ```
+   `.env` is gitignored, so the key stays on your machine and never reaches Git.
+3. **Fetch + view:**
+   ```powershell
+   . .\scripts\monitor.ps1
+   tokens -Cloud                        # fetch now + rebuild + open
+   Watch-MonitorDashboard -Every 300 -Cloud   # or auto-refetch every 5 min
+   ```
+
+Without the key, `fetch_usage_cloud.py` no-ops and the dashboard stays air-gapped — the
+"last fetched" line then reads "未連外抓取（手動 config）".
+
+**How the timestamps behave** (why "last fetched" may look unchanged):
+- The dashboard is a **static HTML snapshot** — pressing **F5 in the browser does NOT re-fetch**;
+  it re-shows the same file. The `last fetched` time only advances when you **regenerate**
+  (`tokens -Cloud` or the watch loop), because that's what re-runs the fetch.
+- `last fetched` = when `fetch_usage_cloud.py` ran; `API 資料更新 <...>` = the API's own
+  `data_refreshed_at`, which Anthropic updates only every ~4 hours — so a re-fetch within that
+  window can legitimately show the same API timestamp.
+
 ## Sharing this repo (recipient setup)
 
 This repo is safe to share — every piece of personal data lives in gitignored files, and the
