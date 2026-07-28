@@ -64,6 +64,24 @@ token 的 `%` 是對照一個**你自訂的參考值** `token_limit`，只是為
 **$ 花費額度 ÷ `token_limit`** 當每-token 單價（即你的實際費率，約 $0.08／百萬 token）× 該列 token 數。
 這是**估算**（`≈`），只有在 config 同時有 `usage_limit.limit` 與 `token_limit` 時才顯示；否則退回純 token 數。
 
+### 四種分組怎麼看（who spent what）
+
+「Token usage」把用量用四種方式切開，每列都顯示 tokens、佔比 %、≈$ 估算：
+
+| 分組 | 依什麼歸戶 | 用途 | 是否含 nested |
+|------|-----------|------|:---:|
+| **By conversation** | 對話 (sessionId) | 哪一次 chat 花最多 | 否 |
+| **By project** | 工作目錄 (cwd) | 哪個專案花最多 | 否 |
+| **By skill** | 當下啟用的 skill（`attributionSkill`）；沒掛的算 `(no skill)` | 各 skill 耗多少 | 否 |
+| **By agent** | `attributionAgent`：主線=`(main thread)`、子代理=其類型（如 `general-purpose`） | 各 agent 耗多少 | **是** |
+
+- **單一對話的每日明細**：By conversation 每列前面有 **▸**，點開展開該對話的**逐日**用量（日期 · ≈$ · tokens · 佔該對話 % · turns）。跨天的對話會逐日列出。
+- **By agent 的計數口徑（重要）**：這是**唯一把子代理/workflow（nested）算進來**的分組。子代理的 transcript 平常被排除（避免和主線重複計算），只有 By agent 會納入 —— 所以它的**總量會比其它分組大**，區塊標題也標明「含 nested、總量與上方不同」。差額就是所有子代理/workflow 實際多耗的量。
+- 其餘三個分組（conversation / project / skill）維持 **nested excluded**，數字彼此一致。
+
+> 想讓「主線 + 子代理」全部一起算進 conversation/project/skill，可跑
+> `python scripts\token_report.py --include-nested`（會改變那三個分組的數字）。
+
 ---
 
 ## 安裝手冊
