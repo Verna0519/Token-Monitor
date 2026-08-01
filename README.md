@@ -215,10 +215,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ". 'C:\path\to\Token-Moni
 **想在任何 PowerShell 視窗直接打 `tokens`？** 把 monitor.ps1 加進你的設定檔（一次性），之後每個新視窗都自動載入：
 
 ```powershell
-Add-Content $PROFILE ". 'C:\path\to\Token-Monitor\aocc-personal-ai-coach\scripts\monitor.ps1'"
+Add-Content $PROFILE ". 'C:\path\to\Token-Monitor\aocc-personal-ai-coach\scripts\monitor.ps1' 6>`$null"
 ```
 
-（把 `C:\path\to\...` 換成你自己 clone 的實際路徑。）
+（把 `C:\path\to\...` 換成你自己 clone 的實際路徑。）結尾的 `6>$null` 會把載入時的說明橫幅**靜音**，
+新視窗保持乾淨；拿掉它就會每次顯示指令清單。設好後開任何新視窗直接打 `tokens` 即可。
 
 > **重點：** 儀表板是靜態 HTML 快照 —— 在瀏覽器**按 F5 不會抓到新資料**，一定要用 `tokens`
 > （或雙擊 `scripts\open-monitor.cmd`／上面那行）重新產生才會是最新的。想讓開著的分頁自動更新，用
