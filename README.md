@@ -29,6 +29,14 @@
 | Claude Code and Cowork credit | `config/usage-limits.json`，**手動填** | ❌ 同上 |
 | Daily spend by product（真實每日 $） | Claude Enterprise Analytics API，**連外** | 只有設了 `ANALYTICS_API_KEY` 才有 |
 
+**看最新用量 = 一鍵、免溝通：** 雙擊 **`scripts\open-monitor.cmd`**（或 `. .\scripts\monitor.ps1; tokens`）
+就會重讀當下 transcript → 重算 → 開啟。**token 用量一定是即時最新**；只有 **$ spent 是手填**（抓不到）。
+
+**⚠️ 月初重置要手動歸零：** `usage_limit` 是**每月重置**的花費額度。一旦過了 `resets` 時間，
+claude.ai 上的真實 spent 會歸零進入新週期，但 config 裡的手填值**不會自動跟著變**。過了重置日請自己把
+`config/usage-limits.json` 的 `usage_limit.spent` 改成新週期的值（新週期剛開始就設 `0`），並把 `resets`
+推到下一個月。`credit` 是**到期制**（看 `expires`）、**不隨月重置**，除非 Usage 頁上它變了才改。
+
 ### 涵蓋範圍與抓不到的東西（為何和 claude.ai Usage 頁不一致）
 
 **這個工具只讀「本機 Claude Code CLI」的對話記錄（`~/.claude/projects/**/*.jsonl`）。**
