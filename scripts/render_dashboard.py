@@ -23,7 +23,15 @@ Usage:
 import argparse
 import json
 import os
+import sys
 import time
+
+# Force UTF-8 stdout so a CJK project path in a status print can't crash on a legacy console codepage.
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(SCRIPT_DIR)
@@ -437,6 +445,13 @@ __REFRESH_META__
       var days=(r.by_day||[]);
       if(!days.length) return null;
       var box=h("div","subdays");
+      // which chat this row is + a link to its local transcript file
+      var sid=(r.session||"").slice(0,8);
+      var fileHtml = r.file
+        ? "<a href='file:///"+String(r.file).replace(/\\/g,"/").replace(/ /g,"%20")+"' target='_blank'>開啟本機紀錄檔</a>"
+        : "（無檔案路徑）";
+      box.appendChild(h("div","subday","<span class='sd-date'>對話 "+sid+
+        "</span><span class='sd-val'>"+fileHtml+"</span>"));
       days.slice().reverse().forEach(function(dd){
         var sh = r.total>0 ? (dd.total/r.total*100) : 0;
         box.appendChild(h("div","subday",
@@ -691,6 +706,36 @@ __REFRESH_META__
     card.appendChild(g); app.appendChild(card);
   }
 
+  function renderHelp(){
+    var card=h("div","card");
+    card.appendChild(h("h2","","使用說明 &amp; 資料來源 (how to use / where the numbers come from)"));
+    var g=h("div","legend");
+    g.innerHTML=
+      "<div><b>要看最新資料</b> — 跑 <code>tokens</code>（或雙擊 <code>scripts\\open-monitor.cmd</code>）重新產生。"+
+        "這是靜態快照，<b>在瀏覽器按 F5 不會更新</b>。</div>"+
+      "<div><b>時間範圍</b> — Usage over time 上方按鈕切 3 天 / 7 天 / 一個月（前端即時）。</div>"+
+      "<div><b>展開明細</b> — By conversation 每列點 <b>▸</b> 看該對話的每日用量，並可<b>開啟本機紀錄檔</b>（file 連結，只有在自己機器上開才點得動）。</div>"+
+      "<div><b>涵蓋範圍</b> — 只含本機 <b>Claude Code CLI</b> 記錄；Chat／Cowork 不在內（見上方黃色提示）。</div>";
+    card.appendChild(g);
+    card.appendChild(h("div","sectlead","<b>每個數字抓自 transcript 的哪個欄位</b>（<code>~/.claude/projects/**/*.jsonl</code>）"));
+    var t=h("table");
+    t.innerHTML="<thead><tr><th>畫面上的欄位</th><th>來源（jsonl 欄位）</th></tr></thead><tbody>"+
+      "<tr><td>total / tokens</td><td class='mono'>message.usage（input + output + cache_creation + cache_read 相加）</td></tr>"+
+      "<tr><td>out（output）</td><td class='mono'>message.usage.output_tokens</td></tr>"+
+      "<tr><td>cache read</td><td class='mono'>message.usage.cache_read_input_tokens</td></tr>"+
+      "<tr><td>turns</td><td class='mono'>type == \"assistant\" 的訊息數</td></tr>"+
+      "<tr><td>By conversation</td><td class='mono'>sessionId（名稱 ← customTitle / aiTitle）</td></tr>"+
+      "<tr><td>By project</td><td class='mono'>cwd（工作目錄）</td></tr>"+
+      "<tr><td>By skill</td><td class='mono'>attributionSkill（無則 (no skill)）</td></tr>"+
+      "<tr><td>By agent</td><td class='mono'>attributionAgent（主線=(main thread)，子代理=其類型；含 nested）</td></tr>"+
+      "<tr><td>日期 / 每日</td><td class='mono'>timestamp（UTC → 換算 UTC+8）</td></tr>"+
+      "<tr><td>&asymp;$ 估算</td><td class='mono'>usage_limit.limit &divide; token_limit &times; tokens（來自 config，非帳單）</td></tr>"+
+      "<tr><td>紀錄檔連結</td><td class='mono'>該 sessionId 的 .jsonl 檔路徑</td></tr>"+
+      "</tbody>";
+    card.appendChild(t);
+    app.appendChild(card);
+  }
+
   function render(){
     app.innerHTML="";
     var op = (L.operator && String(L.operator).indexOf("<")<0) ? ("operator: <b>"+L.operator+"</b> &middot; ") : "";
@@ -708,6 +753,7 @@ __REFRESH_META__
     renderRecent();
     renderCurve();
     renderLegend();
+    renderHelp();
   }
 
   document.getElementById("themeBtn").addEventListener("click",function(){

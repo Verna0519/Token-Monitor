@@ -49,6 +49,26 @@ claude.ai 的 Usage 頁是「**整個帳號、所有產品**」的真實 $（Cha
 
 > 沒掃到 ≠ 沒用。某天在本工具是 0、在 Usage 頁有花費，代表那天你用的是 Chat/Cowork 而非 Claude Code CLI。
 
+### 每個數字抓自 transcript 的哪個欄位
+
+畫面上每個數字都來自 `~/.claude/projects/**/*.jsonl` 的這些欄位（純解析，無 LLM）：
+
+| 畫面上的欄位 | 來源（jsonl 欄位） |
+|---|---|
+| total / tokens | `message.usage`（input + output + cache_creation + cache_read 相加）|
+| out（output）| `message.usage.output_tokens` |
+| cache read | `message.usage.cache_read_input_tokens` |
+| turns | `type == "assistant"` 的訊息數 |
+| By conversation | `sessionId`（名稱 ← `customTitle` / `aiTitle`）|
+| By project | `cwd`（工作目錄）|
+| By skill | `attributionSkill`（無則 `(no skill)`）|
+| By agent | `attributionAgent`（主線 = `(main thread)`，子代理 = 其類型；含 nested）|
+| 日期 / 每日 | `timestamp`（UTC → 換算 UTC+8）|
+| ≈$ 估算 | `usage_limit.limit ÷ token_limit × tokens`（來自 config，非帳單）|
+
+- 儀表板**底部**有一張「**使用說明 &amp; 資料來源**」卡片，就放這張對照表 + 操作提示。
+- **By conversation** 每列點 **▸** 展開，除了每日明細，還會給該對話的 **session id 與本機紀錄檔連結**（`file://`，只有在自己機器上開才點得動）。
+
 ### 權限聲明（連外抓真實 $ 需要什麼）
 
 要讓數字和 claude.ai Usage 頁一致（真實、全產品 $），**唯一方法**是連 Claude Enterprise

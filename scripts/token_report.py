@@ -36,6 +36,15 @@ import time
 from collections import defaultdict
 from datetime import datetime, timezone, timedelta
 
+# Conversation titles are arbitrary Unicode (CJK, emoji). The Windows console defaults to a
+# legacy codepage (e.g. Big5/cp950) that can't encode them, which would crash the stdout table
+# print BEFORE the JSON is written. Force UTF-8 with replacement so a title never breaks the run.
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
+
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(SCRIPT_DIR)
 DEFAULT_JSON = os.path.join(ROOT, "worktemp", "token-usage.json")
@@ -160,7 +169,9 @@ def _read_file(path, nested, include_nested, by_conv, conv_meta, by_proj, by_ski
             sess = o.get("sessionId", "?")
             if count_main:
                 meta = conv_meta.setdefault(sess, {"title": None, "project": None,
-                                                    "first_ts": None, "last_ts": None})
+                                                    "first_ts": None, "last_ts": None, "file": None})
+                if meta.get("file") is None:
+                    meta["file"] = path            # transcript file this chat was read from (local ref/link)
                 if o.get("customTitle"):
                     meta["title"] = o.get("customTitle")
                 elif o.get("aiTitle") and not meta["title"]:
@@ -232,6 +243,7 @@ def _rows(bucket_map, key_name, tz, meta=None):
         if meta and key in meta:
             m = meta[key]
             row.update({"title": m.get("title"), "project": m.get("project"),
+                        "file": m.get("file"),
                         "first_tw": tw_str(m.get("first_ts"), tz),
                         "last_tw": tw_str(m.get("last_ts"), tz)})
         rows.append(row)
