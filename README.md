@@ -203,8 +203,25 @@ cd "C:\path\to\Token-Monitor\aocc-personal-ai-coach"; . .\scripts\monitor.ps1; t
 
 之後在**同一個視窗**，只要打 `tokens` 就會再抓一次最新的（每跑一次都重讀 `~/.claude/projects`）。
 
+**不想先 cd／先 dot-source？一發就開**（可直接貼進 Win+R「執行」框，或任何一個新視窗）：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command ". 'C:\path\to\Token-Monitor\aocc-personal-ai-coach\scripts\monitor.ps1'; Show-TokenDashboard"
+```
+
+這行和雙擊 `scripts\open-monitor.cmd` 效果一樣（`open-monitor.cmd` 內部就是跑這行）。加 `-Cloud`
+可連同真實 $ 一起抓（需 `ANALYTICS_API_KEY`）。
+
+**想在任何 PowerShell 視窗直接打 `tokens`？** 把 monitor.ps1 加進你的設定檔（一次性），之後每個新視窗都自動載入：
+
+```powershell
+Add-Content $PROFILE ". 'C:\path\to\Token-Monitor\aocc-personal-ai-coach\scripts\monitor.ps1'"
+```
+
+（把 `C:\path\to\...` 換成你自己 clone 的實際路徑。）
+
 > **重點：** 儀表板是靜態 HTML 快照 —— 在瀏覽器**按 F5 不會抓到新資料**，一定要用 `tokens`
-> （或雙擊 `scripts\open-monitor.cmd`）重新產生才會是最新的。想讓開著的分頁自動更新，用
+> （或雙擊 `scripts\open-monitor.cmd`／上面那行）重新產生才會是最新的。想讓開著的分頁自動更新，用
 > `Watch-MonitorDashboard -Every 300`（每 5 分鐘自動重抓＋重整，Ctrl+C 停）。
 
 ---
