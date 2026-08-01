@@ -172,6 +172,8 @@ __REFRESH_META__
     border-radius:7px;padding:4px 13px;font-size:12.5px;cursor:pointer;font-family:inherit;}
   .rangebtn:hover{border-color:var(--series);}
   .rangebtn.active{background:var(--series);color:#fff;border-color:var(--series);}
+  .rangeinfo{font-size:11.5px;color:var(--text2);margin:0 0 10px;font-variant-numeric:tabular-nums;}
+  .rangeinfo b{color:var(--text);}
   /* curve */
   svg{width:100%;height:auto;display:block;overflow:visible;}
   .axis{fill:var(--muted);font-size:11px;font-variant-numeric:tabular-nums;}
@@ -621,7 +623,10 @@ __REFRESH_META__
                     : {label:key,tok:0,out:0,msgs:0});
       cur.setDate(cur.getDate()+1);
     }
+    var tzLabel=(scc.timezone)||"UTC+8";
+    var winPulled=(scc.window_since? scc.window_since : (days[0]&&days[0].date)||"?")+" → "+(scc.window_until? scc.window_until : "now");
     var bar=h("div","rangebar");
+    var rangeInfo=h("div","rangeinfo");
     var chart=h("div");                 // curve container, re-rendered on range change
     var readout=h("div","readout");
     function valOf(p){ return rateC>0 ? p.tok*rateC : p.tok; }
@@ -650,7 +655,11 @@ __REFRESH_META__
       if(rateC>0 && dailyBudget>0) opts.refLine={val:dailyBudget, label:"月額度日均 "+curSym+dailyBudget.toFixed(1)};
       chart.innerHTML="";
       chart.appendChild(curve(pts, function(p){ pick(p); }, opts));
-      if(pts.length) pick(pts[pts.length-1]);
+      if(pts.length){
+        pick(pts[pts.length-1]);
+        rangeInfo.innerHTML="抓入區間（產生時實際掃到）：<b>"+winPulled+"</b>（"+tzLabel+"）"+
+          " &middot; 目前顯示 <b>"+pts[0].label+" → "+pts[pts.length-1].label+"</b>（"+pts.length+" 天）";
+      }
     }
     var ranges=[{n:3,label:"近 3 天"},{n:7,label:"近 7 天"},{n:30,label:"近一個月"}];
     var btns=[];
@@ -659,7 +668,7 @@ __REFRESH_META__
       b.addEventListener("click",function(){ btns.forEach(function(x){x.classList.remove("active");}); b.classList.add("active"); draw(rg.n); });
       bar.appendChild(b); btns.push(b);
     });
-    card.appendChild(bar); card.appendChild(chart); card.appendChild(readout);
+    card.appendChild(bar); card.appendChild(rangeInfo); card.appendChild(chart); card.appendChild(readout);
     var defIdx=2;                        // default: 近一個月（最寬，歷史都看得到）
     btns[defIdx].classList.add("active"); draw(ranges[defIdx].n);
     app.appendChild(card);

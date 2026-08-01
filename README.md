@@ -229,8 +229,13 @@ Add-Content $PROFILE ". 'C:\path\to\Token-Monitor\aocc-personal-ai-coach\scripts
 
 ## 日常使用（PowerShell）
 
+> **最簡單的日常：開任何一個新的 PowerShell 視窗，直接打 `tokens`。**
+> 前提是你做過上面的 `$PROFILE` 一次性設定（把 monitor.ps1 加進設定檔）——設好後每個新視窗都自動載入，
+> 不用再 `. .\scripts\monitor.ps1`。沒設定的話，就每個 shell 先手動 dot-source 一次（下面第一行）。
+> 打一次 `tokens` = 重讀當下 transcript → 重算 → 開儀表板，一定是最新。
+
 ```powershell
-. .\scripts\monitor.ps1     # 每個新 shell 載入一次
+. .\scripts\monitor.ps1     # 沒設 $PROFILE 才需要：每個新 shell 載入一次（設過就免）
 
 tokens                      # 預設區間（config 的 window）；每跑一次都重抓最新資料
 tokens -Today               # 今天（台灣時間）
