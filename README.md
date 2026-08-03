@@ -304,6 +304,30 @@ Copy-Item .env.template .env                                           # 選用�
 
 ---
 
+## 送出前估算 token（`count_tokens.py`）
+
+上面的儀表板是「**用完之後**」的實際用量。若你想在**送出一段 prompt 之前**先估它的 **input token**
+（做預算、判斷要不要精簡），用 `scripts/count_tokens.py`：
+
+```powershell
+# 離線（預設，air-gapped）：本機粗估，不連網、不用 key
+python scripts\count_tokens.py --text "你要送的內容"
+python scripts\count_tokens.py --file prompt.md
+"從 stdin 管進來的內容" | python scripts\count_tokens.py
+
+# 精確（選用，EGRESS）：設了 ANTHROPIC_API_KEY 就改用官方 API 精算
+python scripts\count_tokens.py --file prompt.md --model claude-opus-4-8
+python scripts\count_tokens.py --text hi --print-request   # 只看會送出什麼，不連網
+```
+
+- **預設離線**：沒設 key 時給本機粗估（latin ≈ 字元數/4、CJK ≈ /1.5），標成 `~approx`，**零連網**。
+- **精確模式（opt-in egress）**：`.env` 設 `ANTHROPIC_API_KEY`（一般 Messages API key，**不是** Analytics key）後，
+  改呼叫 `POST /v1/messages/count_tokens` 拿真實 `input_tokens`。這是**除 `fetch_usage_cloud.py` 外的第二個
+  會連外的腳本**，同樣只在你手動執行且有 key 時才連。
+- **只算 input**：count_tokens 只數「你要送進去」的 token，**不含 output、不含實際帳單** —— 事後實際用量請看儀表板（`tokens`）。
+
+---
+
 ## 這個 repo 其實也是一個 agent
 
 Token Monitor 是內建在 **`aocc-personal-ai-coach`**（三層 AI 能力教練設計的個人層）裡的一套本機監控
