@@ -346,10 +346,21 @@ App 的本機 **`local-agent-mode-sessions/**/audit.jsonl`**(由 `scripts/cowork
 
 打 `tokens` 時會一併重算 Cowork(`cowork_report.py` 已接進儀表板產生流程)。
 
-**自動帶入 credit 下限:** 上方「Claude Code and Cowork credit」那格,若 config 設了
-`credit.amount_usd`(例如 $1000 池),會**自動**把量到的 **Cowork 真實 $(全時間)** 當「已用」的
-**下限**顯示(`≥ $X / $1000`,每次叫出更新),並標明**未含 Chat 與 Code 的 $**(那些本機量不到)。
-`Spend limit · Chat`($150/月)則維持手填 —— Chat 用量本機看不到。這是唯一能免 key、自動更新的 $。
+**自動帶入 credit 已用:** 上方「Claude Code and Cowork credit」那格,若 config 設了
+`credit.amount_usd`(例如 $1000 池),會**自動**算出已用(每次叫出更新)——因為這個 credit **同時**
+被 Code 和 Cowork 吃掉,所以兩邊都算:
+
+```
+已用 ≈  Cowork 真實 $（實測，audit total_cost_usd）
+      ＋ Code 估算 $（CLI 無 $ 欄位，用你的費率換算）      ← 皆取「全時間」
+```
+
+取全時間是因為 credit 是**到期制**、不隨月重置。**Chat 不吃這個 credit**,故不計入。
+實測參考:某次為 Cowork $236.83 + Code ≈$119.21 ≈ **$356 / $1000 = 35.6%**,而 Usage 頁當時顯示
+**38%** —— 誤差來自 Code 那半是估算,量級是對的。
+
+`Spend limit · Chat`($150/月)維持**手填** —— Chat 用量本機完全看不到,沒填/為 0 時儀表板會直接
+標「此數字本機無法量測」並指引你去 claude.ai 查。
 
 ---
 

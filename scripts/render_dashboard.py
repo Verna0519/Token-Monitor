@@ -370,13 +370,22 @@ __REFRESH_META__
     var cr=L.credit||{};
     var pool=(cr.amount_usd && Number(cr.amount_usd)>0)? Number(cr.amount_usd) : 0;
     var cwLife=(CW && CW.available && CW.lifetime)? Number(CW.lifetime.cost_usd||0) : 0;
+    // the credit covers BOTH products, so include Code too: real Cowork $ + estimated Code $
+    var tlimK=(L.token_limit&&Number(L.token_limit)>0)?Number(L.token_limit):0;
+    var ulimK=(u.limit&&Number(u.limit)>0)?Number(u.limit):0;
+    var rateK=(tlimK>0&&ulimK>0)?(ulimK/tlimK):0;
+    var codeLifeTok=(T && T.lifetime && T.lifetime.total)? Number(T.lifetime.total) : 0;
+    var codeLifeEst=(rateK>0 && codeLifeTok>0)? codeLifeTok*rateK : 0;
+    var usedEst=cwLife+codeLifeEst;
     var cpct, csub, capNote;
-    if(pool>0 && cwLife>0){
-      // AUTO, keyless: measured Cowork $ (all-time) as a LOWER BOUND of credit used
-      cpct=Math.min(100, cwLife/pool*100);
-      csub="&ge; "+usd(cwLife)+" / "+usd(pool)+" 已用（下限）"+(cr.expires? (" &middot; "+whenInfo(cr.expires,"expires")) : "");
-      capNote="已用為<b>實測下限</b>：只含本機量到的 <b>Cowork 真實 $</b>（"+usd(cwLife)+
-        "，每次叫出自動更新）；<b>未含 Chat 與 Code 的 $</b>（本機量不到）。池大小 "+usd(pool)+" 由 config 填。";
+    if(pool>0 && usedEst>0){
+      // AUTO, keyless: Cowork real $ (measured) + Code estimated $ — both draw on this credit
+      cpct=Math.min(100, usedEst/pool*100);
+      csub="&asymp;"+usd(usedEst)+" / "+usd(pool)+" 已用"+(cr.expires? (" &middot; "+whenInfo(cr.expires,"expires")) : "");
+      capNote="已用為<b>自動估算</b>（每次叫出更新）＝ <b>Cowork "+usd(cwLife)+"（實測真實 $）</b> ＋ "+
+        "<b>Code &asymp;"+usd(codeLifeEst)+"（估算</b>，CLI 記錄無 $ 欄位，以你的費率換算）"+
+        "，皆取<b>全時間</b>（credit 是到期制、不隨月重置）。池大小 "+usd(pool)+" 由 config 填；"+
+        "<b>Chat 不吃這個 credit</b>，故不計入。";
     } else {
       cpct=(cr.used_pct!=null)? Number(cr.used_pct) : pctOf(cr.used,cr.total);
       csub=(cr.expires? whenInfo(cr.expires,"expires") : "expiry not set");

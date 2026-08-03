@@ -125,6 +125,7 @@ def collect(projects_root, project_filter, include_nested, since, until, tz):
     conv_day = defaultdict(lambda: defaultdict(zero))  # per-conversation daily breakdown (session -> day -> tokens)
     conv_meta = {}
     grand = zero()
+    life = zero()   # ALL-TIME totals, ignoring the window (used for lifetime pools e.g. the credit)
     stats = {"files": 0, "nested_files": 0, "skipped_no_ts": 0, "skipped_out_window": 0}
 
     for dirpath, _dirs, files in os.walk(projects_root):
@@ -144,13 +145,13 @@ def collect(projects_root, project_filter, include_nested, since, until, tz):
             else:
                 stats["files"] += 1
             _read_file(full, nested, include_nested, by_conv, conv_meta, by_proj, by_skill,
-                       by_day, by_agent, conv_day, grand, since, until, tz, stats)
+                       by_day, by_agent, conv_day, grand, since, until, tz, stats, life)
 
-    return by_conv, conv_meta, by_proj, by_skill, by_day, by_agent, conv_day, grand, stats
+    return by_conv, conv_meta, by_proj, by_skill, by_day, by_agent, conv_day, grand, stats, life
 
 
 def _read_file(path, nested, include_nested, by_conv, conv_meta, by_proj, by_skill,
-               by_day, by_agent, conv_day, grand, since, until, tz, stats):
+               by_day, by_agent, conv_day, grand, since, until, tz, stats, life=None):
     count_main = (not nested) or include_nested   # feed the standard lenses?
     windowed = since is not None or until is not None
     try:
@@ -184,6 +185,12 @@ def _read_file(path, nested, include_nested, by_conv, conv_meta, by_proj, by_ski
             usage = (o.get("message") or {}).get("usage") or {}
             if not usage:
                 continue
+
+            # ALL-TIME tally (pre-window), same scope as `grand` (standard lenses only)
+            if life is not None and count_main:
+                for k in TOKKEYS:
+                    life[k] += usage.get(k, 0) or 0
+                life["msgs"] += 1
 
             dt = parse_ts(o.get("timestamp"))
             if windowed:
@@ -293,7 +300,7 @@ def main():
             until = parse_local_dt(args.until, tz, end=True)
 
     root = resolve_projects_root()
-    by_conv, conv_meta, by_proj, by_skill, by_day, by_agent, conv_day, grand, stats = collect(
+    by_conv, conv_meta, by_proj, by_skill, by_day, by_agent, conv_day, grand, stats, life = collect(
         root, args.project, args.include_nested, since, until, tz)
 
     conv_rows = _rows(by_conv, "session", tz, conv_meta)
@@ -350,6 +357,8 @@ def main():
                       "skipped_no_ts": stats["skipped_no_ts"],
                       "skipped_out_window": stats["skipped_out_window"]},
             "totals": {**{k: grand[k] for k in TOKKEYS}, "total": gtot, "msgs": grand.get("msgs", 0)},
+            "lifetime": {**{k: life[k] for k in TOKKEYS}, "total": total_of(life),
+                         "msgs": life.get("msgs", 0)},
             "by_conversation": conv_rows,
             "by_project": proj_rows,
             "by_skill": skill_rows,
