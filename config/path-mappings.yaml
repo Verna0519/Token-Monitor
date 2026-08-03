@@ -20,3 +20,9 @@ CLAUDE_PROJECTS_ROOT: "<set me — full path to your .claude/projects folder, ho
 # DEFERRED (not ingested in the Pilot): local Codex CLI transcripts (~/.codex/sessions).
 # Left as a generic token so a later pass can wire it without touching logic.
 CODEX_SESSIONS_ROOT: "<set me — absolute path to ~/.codex/sessions (DEFERRED)>"
+
+# OPTIONAL — Token Monitor only (NOT the coordinate pipeline): the desktop app's Cowork
+# "local agent mode" sessions dir, read by scripts/cowork_report.py for per-chat-room + daily
+# usage with REAL $ (audit.jsonl total_cost_usd). Leave unset to use the OS default
+# (~/AppData/Roaming/Claude/local-agent-mode-sessions on Windows); set here to override.
+COWORK_SESSIONS_ROOT: "<optional — path to Claude local-agent-mode-sessions; blank = OS default>"

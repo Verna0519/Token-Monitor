@@ -328,6 +328,26 @@ python scripts\count_tokens.py --text hi --print-request   # 只看會送出什�
 
 ---
 
+## Cowork 用量（獨立區塊，真實 $）
+
+除了 Claude Code(讀 `~/.claude/projects`),儀表板另有一個**獨立的 Cowork 區塊**,資料來自桌面
+App 的本機 **`local-agent-mode-sessions/**/audit.jsonl`**(由 `scripts/cowork_report.py` 解析)。
+
+- **per 聊天室(chat room)**:依 Cowork `session_id` 分組,顯示**真實 $**、tokens、turns;點 ▸ 展開每日。
+- **每日真實花費**:Cowork 逐日 $ / tokens。
+- **真實 $ 不是估算**:金額取自 audit 的 `total_cost_usd`(每個 `result` 回合一筆,不重複計)。這比
+  Code 側的「估算 $」準 —— 因為 Code CLI 的 transcript 沒有 $ 欄位。
+- **和 Code 分開算**:Cowork 是不同產品,獨立成一塊,不與上方 Code 的 token 混在一起。
+- **來源路徑**:預設 `~/AppData/Roaming/Claude/local-agent-mode-sessions`(Windows);可在
+  `config/path-mappings.filled.yaml` 設 `COWORK_SESSIONS_ROOT` 覆寫。沒有 Cowork 資料時,這個區塊
+  自動不顯示。
+- **只影響監控工具**:這是 Token Monitor 多讀的一個本機來源,輸出一樣在 `worktemp/`(gitignored、
+  本機);**不進**能力座標 / 萃取管線(那條維持 Claude Code CLI only)。
+
+打 `tokens` 時會一併重算 Cowork(`cowork_report.py` 已接進儀表板產生流程)。
+
+---
+
 ## 這個 repo 其實也是一個 agent
 
 Token Monitor 是內建在 **`aocc-personal-ai-coach`**（三層 AI 能力教練設計的個人層）裡的一套本機監控

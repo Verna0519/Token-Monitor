@@ -71,6 +71,8 @@ def main():
     ap.add_argument("--limits", default=DEFAULT_LIMITS, help="usage-limits config (falls back to template)")
     ap.add_argument("--cloud-json", default=os.path.join(ROOT, "worktemp", "cloud-usage.json"),
                     help="fetch_usage_cloud.py output to embed (optional; '-' to skip)")
+    ap.add_argument("--cowork-json", default=os.path.join(ROOT, "worktemp", "cowork-usage.json"),
+                    help="cowork_report.py output to embed (optional; '-' to skip)")
     ap.add_argument("--out", default=DEFAULT_OUT)
     ap.add_argument("--refresh", type=int, default=0,
                     help="seconds between browser auto-reloads (0=off); pair with a regenerate loop")
@@ -79,7 +81,8 @@ def main():
     tokens = None if args.token_json == "-" else load_json(args.token_json)
     limits = load_json(args.limits) or load_json(TEMPLATE_LIMITS) or {}
     cloud = None if args.cloud_json == "-" else load_json(args.cloud_json)
-    model = {"tokens": tokens, "limits": limits, "cloud": cloud}
+    cowork = None if args.cowork_json == "-" else load_json(args.cowork_json)
+    model = {"tokens": tokens, "limits": limits, "cloud": cloud, "cowork": cowork}
     generated = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
     html = render(model, generated, refresh=args.refresh)
 
@@ -246,7 +249,7 @@ __REFRESH_META__
 (function(){
   "use strict";
   var M = JSON.parse(document.getElementById("mon-data").textContent);
-  var T = M.tokens, L = M.limits || {};
+  var T = M.tokens, L = M.limits || {}, CW = M.cowork || null;
   var app = document.getElementById("app");
   var tip = document.getElementById("tip");
   var SVGNS = "http://www.w3.org/2000/svg";
@@ -692,6 +695,72 @@ __REFRESH_META__
     app.appendChild(card);
   }
 
+  function renderCoworkLocal(){
+    if(!CW || !CW.available || !(CW.by_room||[]).length) return;
+    var tot=CW.totals||{}, sc=CW.scope||{};
+    var card=h("div","card");
+    card.appendChild(h("h2","","Cowork &middot; 本機用量（真實 $）"));
+    card.appendChild(h("div","scopenote",
+      "來源：Cowork 桌面 App 的本機 <code>audit.jsonl</code>（"+(sc.audit_files||0)+" 個 session）。"+
+      "$ 是 <b>audit 的 total_cost_usd（真實花費，非估算）</b>；與上方 Claude Code 的 token 分析<b>是不同產品、分開算</b>。"));
+    var tiles=h("div","tiles");
+    tiles.appendChild(tileEl("real $ (this window)", usd(tot.cost_usd)));
+    tiles.appendChild(tileEl("total tokens", n(tot.total)));
+    tiles.appendChild(tileEl("chat rooms", n(tot.rooms)));
+    tiles.appendChild(tileEl("runs", n(tot.results)));
+    card.appendChild(tiles);
+    // by chat room (real $), share of Cowork total
+    var gtot=tot.cost_usd||0, top=8;
+    card.appendChild(h("div","sectlead","<b>By chat room</b> &mdash; per Cowork session (top "+top+")；點 &#9656; 看每日"));
+    var rooms=(CW.by_room||[]).slice(0,top);
+    var max=Math.max.apply(null, rooms.map(function(r){return r.cost_usd||0;}))||1;
+    var wrap=h("div");
+    rooms.forEach(function(r){
+      var row=h("div","bar-row");
+      var nm=h("div","bar-name"); var label=r.label||(r.session||"").slice(0,10);
+      nm.textContent=label; nm.title=(r.label? r.label+"  ":"")+"session "+(r.session||"");
+      var track=h("div","bar-track");
+      var fill=h("div","bar-fill"); fill.style.width=Math.max(1,(r.cost_usd/max)*100).toFixed(1)+"%";
+      track.appendChild(fill);
+      var share=gtot>0?(r.cost_usd/gtot*100):0;
+      var val=h("div","bar-val","<b>"+usd(r.cost_usd)+"</b> <span class='pct'>"+share.toFixed(1)+"%</span> &middot; "+
+        n(r.total)+" tok &middot; "+r.turns+" turns");
+      row.appendChild(nm); row.appendChild(track); row.appendChild(val);
+      var days=(r.by_day||[]);
+      if(days.length){
+        var dd=h("details","bar-details"); var sm=document.createElement("summary"); sm.appendChild(row);
+        var box=h("div","subdays");
+        box.appendChild(h("div","subday","<span class='sd-date'>session "+(r.session||"").slice(0,8)+
+          "</span><span class='sd-val'>"+(r.last_tw||"")+"</span>"));
+        days.slice().reverse().forEach(function(x){
+          box.appendChild(h("div","subday","<span class='sd-date'>"+x.date+"</span><span class='sd-val'>"+
+            usd(x.cost_usd)+" &middot; "+n(x.total)+" tok</span>"));
+        });
+        dd.appendChild(sm); dd.appendChild(box); wrap.appendChild(dd);
+      } else { wrap.appendChild(row); }
+    });
+    card.appendChild(wrap);
+    // by day (real $)
+    var byday=(CW.by_day||[]);
+    if(byday.length){
+      card.appendChild(h("div","sectlead","<b>每日真實花費</b>（Cowork）"));
+      var dmax=Math.max.apply(null, byday.map(function(d){return d.cost_usd||0;}))||1;
+      var dwrap=h("div");
+      byday.slice().reverse().forEach(function(d){
+        var row=h("div","bar-row");
+        var nm=h("div","bar-name"); nm.textContent=d.date;
+        var track=h("div","bar-track");
+        var fill=h("div","bar-fill"); fill.style.width=Math.max(1,(d.cost_usd/dmax)*100).toFixed(1)+"%";
+        track.appendChild(fill);
+        var val=h("div","bar-val","<b>"+usd(d.cost_usd)+"</b> &middot; "+n(d.total)+" tok");
+        row.appendChild(nm); row.appendChild(track); row.appendChild(val);
+        dwrap.appendChild(row);
+      });
+      card.appendChild(dwrap);
+    }
+    app.appendChild(card);
+  }
+
   function renderLegend(){
     var card=h("div","card");
     card.appendChild(h("h2","","欄位說明 (legend)"));
@@ -761,6 +830,7 @@ __REFRESH_META__
     renderTokenBars();
     renderRecent();
     renderCurve();
+    renderCoworkLocal();
     renderLegend();
     renderHelp();
   }

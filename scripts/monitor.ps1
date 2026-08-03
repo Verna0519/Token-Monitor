@@ -179,6 +179,7 @@ function Show-TokenDashboard {
         if (-not $SkipTokens) {
             Write-Host ("token window: {0}" -f $lbl) -ForegroundColor DarkGray
             & $script:MonPy (Join-Path $PSScriptRoot 'token_report.py') @tok | Out-Null
+            & $script:MonPy (Join-Path $PSScriptRoot 'cowork_report.py') @tok | Out-Null
         }
         if ($Cloud) {
             Write-Host "cloud fetch (EGRESS) requested..." -ForegroundColor DarkGray
