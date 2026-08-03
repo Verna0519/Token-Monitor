@@ -1,465 +1,225 @@
 # Token Monitor
 
-> 本機、離線（air-gapped）的 Claude Code **token / 花費監控**工具。純 stdlib Python + PowerShell，
-> **零連外**，所有輸出只寫進 `worktemp/`（私有、gitignored）。給需要看「哪個 skill / 專案 / 對話
-> 花了多少 token」的人使用，可打包分享，每個人填自己的資料。
-
-> 中文在前，English summary at the bottom。
+> 本機、離線的 **Claude Code + Cowork** token／花費監控儀表板。純 stdlib Python + PowerShell，
+> **預設零連外**，所有輸出只寫進 `worktemp/`（私有、gitignored）。
+>
+> **核心原則：只顯示量得到的數字。** 量不到的就不顯示 —— 不擺過期的手填值，也不用假設換算出金額。
 
 ---
 
 ## 這是什麼
 
-打開一個自包含的 HTML 儀表板，回答一個問題：**「誰花了什麼」** —— 從你本機的 Claude Code
-對話記錄（`~/.claude/projects/**/*.jsonl`）統計 token 用量，依 **對話 / 專案 / skill** 分組，畫出
-每日趨勢，並對照你 Claude Usage 頁上的 **$ 花費額度 / credit**。
+打開一個自包含的 HTML 儀表板，回答「**誰花了什麼**」：
 
-- **本機分析**（token）：每次開啟／重新產生時，重讀你當下的對話記錄 —— 一定是最新的。
-- **$ 與 credit**：預設由你手動填在 `config/usage-limits.json`（對照 Claude Settings > Usage 頁）。
-  可選：設定 Analytics API key 後自動連外抓真實 $（見下方「連外抓 $」）。
+- **Claude Code** —— 讀本機對話記錄（`~/.claude/projects/**/*.jsonl`），依 **對話／專案／skill／agent**
+  與 **每日** 統計 token。
+- **Cowork** —— 讀桌面 App 的本機 audit（`local-agent-mode-sessions/**/audit.jsonl`），依 **聊天室**
+  與 **每日** 統計，並帶**真實 $**。
+
+兩者是**不同產品、分開兩個區塊**，不混在一起。
 
 ---
 
-## ⚠️ 當前狀態（一定要先讀）
+## 儀表板上有什麼（依畫面順序）
 
-| 區塊 | 資料來源 | 會自動更新嗎 |
-|------|----------|--------------|
-| Token usage（對話 / 專案 / skill / 每日曲線 / 近期列表） | 本機對話記錄，離線讀取 | ✅ 每次 `tokens` 或雙擊 `open-monitor.cmd` 都重抓當下資料 |
-| Cowork（per 聊天室 / 每日，**真實 $**） | 本機 Cowork `audit.jsonl` 的 `total_cost_usd` | ✅ 每次一併重抓（`cowork_report.py`）；**這是唯一實測的 $** |
-| ~~Claude Code and Cowork credit~~ | — | ❌ **已移除**（見下方「為何不顯示估算 $」） |
-| ~~Code 的 ≈$ 估算 / token 額度 %~~ | — | ❌ **已移除**（同上） |
-| Your usage limits（帳號整體 $ 花費） | 只有 Analytics API 有 | **只在 `-Cloud` 抓到時才顯示**；抓不到就**不出現**（不擺過期手填值） |
+| # | 區塊 | 內容 | 資料性質 |
+|---|------|------|----------|
+| 1 | **近期使用列表** | 最近 10 個對話（時間、標題、token） | 實測 |
+| 2 | **Usage over time** | 每日 token 曲線；x 軸**以天為單位**、可切 **3／7／30 天**（預設 7 天）；點一天看**與前一日增減**；顯示**抓入區間與時區** | 實測 |
+| 3 | **Token usage · who spent what** | **By conversation／By project／By skill／By agent** 四種分組，每列有 token、佔比；點 **▸** 展開看細項名稱 | 實測 |
+| 4 | **Code · 本機用量** | token 組成表（cache 佔比）＋各 model；$ 為**官方牌價計算值**（CLI 無金額欄位） | 實測 token ＋ 計算 $ |
+| 5 | **Cowork · 本機用量** | 每個**聊天室**（名稱＋真實 $＋點 ▸ 看每日）、**每日真實花費**、token 組成、各 model 單價 | **實測真實 $** |
+| 6 | **欄位說明 / 使用說明** | 每個欄位的定義 ＋ 每個數字抓自哪個 jsonl 欄位 | — |
 
-### 為何不顯示估算 $（重要的誠實聲明）
+> **Your usage limits（帳號整體 $）** 只有在你用 `-Cloud` 連外抓到真實數字時才會出現；抓不到就**整塊不顯示**。
 
-Claude Code 的 CLI transcript **沒有金額欄位**,所以任何「Code 花了多少 $」都只能靠一個
-**每-token 費率**去換算。先前版本用的費率是
-`usage_limit.limit ÷ token_limit`(= $150 ÷ 18.3 億 ≈ **$0.082/百萬 token**),但:
+### 四種分組的定義
 
-1. 那個 `token_limit`(18.3 億)本身是**我用 7 天用量外推的假設**,所以
-   `rate = $150 ÷ token_limit` 只是**重複同一個假設**(循環推導),從未與真實帳單校驗。
-2. 後來 Cowork 提供了**真實 $ 與真實 token**,可反推實測費率:
-   `$236.83 ÷ 1.37 億 =` **$1.72/百萬 token** —— 和上面的假設**差約 21 倍**。
+| 分組 | 依什麼歸戶（jsonl 欄位） | 點 ▸ 展開會看到 | 含子代理？ |
+|------|--------------------------|-----------------|:---:|
+| **By conversation** | `sessionId`（名稱 ← `customTitle`／`aiTitle`） | 每日用量、**用到的 skill**、開啟本機紀錄檔 | ✗ |
+| **By project** | `cwd`（該 turn 當下的工作目錄） | 這個專案底下**哪些對話** | ✗ |
+| **By skill** | `attributionSkill`（該 skill **作用期間**；無則 `(no skill)`） | 用到這個 skill 的**哪些對話** | ✗ |
+| **By agent** | `attributionAgent`（主線 `(main thread)` ／子代理類型） | 這個 agent 出現在**哪些對話** | **✓ 唯一含** |
 
-既然唯一的實測基準否證了那個假設,**顯示它只會誤導**。因此(operator ruling)移除所有基於它的輸出:
-`≈$ this window`、每列 `≈$`、`of token limit %`、「本視窗估算花費/月額度」量表、以及需要 Code 估算的
-**credit 區塊**;`Usage over time` 的 y 軸也改回 **token**。
+By agent 是唯一納入 nested（子代理／workflow）transcript 的分組，所以它的總量會比其他三個大 ——
+差額就是子代理實際多耗的量，區塊標題會標出來。
 
-**現在畫面上只留兩種數字:**
-- ✅ **實測 token**(Code:對話/專案/skill/agent/每日)
-- ✅ **實測真實 $**(僅 Cowork,來自 audit `total_cost_usd`)
+### 時區（Usage over time）
 
-`%` 一律是「佔本視窗總量」的**實測佔比**,不再對照任何假設額度。`config` 的 `token_limit` 已設為
-`0`(關閉);除非你有**真正量到**的數字,否則別填回去。
-| Daily spend by product（真實每日 $） | Claude Enterprise Analytics API，**連外** | 只有設了 `ANALYTICS_API_KEY` 才有 |
+transcript 存的是 **UTC**（ISO `…Z`）。報表預設換算成 **UTC+8（台灣）**，畫面上會寫明
+「抓入區間 … (UTC+8)」。它還會**比對你這台機器的時區**：一致就標示一致，不一致會警告
+「每日分界以 UTC+8 為準、非你的當地日」，並給出改用當地時間的指令
+（`python scripts\token_report.py --utc-offset <你的offset>`）。
 
-**看最新用量 = 一鍵、免溝通：** 雙擊 **`scripts\open-monitor.cmd`**（或 `. .\scripts\monitor.ps1; tokens`）
-就會重讀當下 transcript → 重算 → 開啟。**token 用量一定是即時最新**；只有 **$ spent 是手填**（抓不到）。
+### $ 的三種身分（很重要）
 
-**⚠️ 月初重置要手動歸零：** `usage_limit` 是**每月重置**的花費額度。一旦過了 `resets` 時間，
-claude.ai 上的真實 spent 會歸零進入新週期，但 config 裡的手填值**不會自動跟著變**。過了重置日請自己把
-`config/usage-limits.json` 的 `usage_limit.spent` 改成新週期的值（新週期剛開始就設 `0`），並把 `resets`
-推到下一個月。`credit` 是**到期制**（看 `expires`）、**不隨月重置**，除非 Usage 頁上它變了才改。
-
-### 涵蓋範圍與抓不到的東西（為何和 claude.ai Usage 頁不一致）
-
-**這個工具只讀「本機 Claude Code CLI」的對話記錄（`~/.claude/projects/**/*.jsonl`）。**
-claude.ai 的 Usage 頁是「**整個帳號、所有產品**」的真實 $（Chat + Cowork + Claude Code 一起算）。
-兩者範圍不同，所以**每日與總額本來就不會一致，這不是 bug**：
-
-| | claude.ai Usage 頁 | 本工具 |
-|---|---|---|
-| 涵蓋 | 全部產品：Chat + Cowork + Claude Code | **只有 Claude Code CLI** |
-| 單位 | 真實 $ | 本機 token（＋估算 $） |
-| 來源 | Anthropic 伺服器 | 本機 `~/.claude/projects` |
-
-**本機抓不到的東西（無論如何都拿不到本機資料）：**
-
-- **Chat / Cowork 的用量** —— 那些在 claude.ai 網頁／桌機 App 產生，不寫進 CLI transcript。
-- **真實每產品 $ 花費**（Usage 頁那張 Daily spend by product）。
-- **即時伺服器額度 / 真實 spent**（上方 $ 區是你手填的，非即時）。
-
-> 沒掃到 ≠ 沒用。某天在本工具是 0、在 Usage 頁有花費，代表那天你用的是 Chat/Cowork 而非 Claude Code CLI。
-
-### 每個數字抓自 transcript 的哪個欄位
-
-畫面上每個數字都來自 `~/.claude/projects/**/*.jsonl` 的這些欄位（純解析，無 LLM）：
-
-| 畫面上的欄位 | 來源（jsonl 欄位） |
-|---|---|
-| total / tokens | `message.usage`（input + output + cache_creation + cache_read 相加）|
-| out（output）| `message.usage.output_tokens` |
-| cache read | `message.usage.cache_read_input_tokens` |
-| turns | `type == "assistant"` 的訊息數 |
-| By conversation | `sessionId`（名稱 ← `customTitle` / `aiTitle`）|
-| By project | `cwd`（工作目錄）|
-| By skill | `attributionSkill`（無則 `(no skill)`）|
-| By agent | `attributionAgent`（主線 = `(main thread)`，子代理 = 其類型；含 nested）|
-| 日期 / 每日 | `timestamp`（UTC → 換算 UTC+8）|
-| ≈$ 估算 | `usage_limit.limit ÷ token_limit × tokens`（來自 config，非帳單）|
-
-- 儀表板**底部**有一張「**使用說明 &amp; 資料來源**」卡片，就放這張對照表 + 操作提示。
-- **By conversation** 每列點 **▸** 展開，除了每日明細，還會給該對話的 **session id 與本機紀錄檔連結**（`file://`，只有在自己機器上開才點得動）。
-
-### 權限聲明（連外抓真實 $ 需要什麼）
-
-要讓數字和 claude.ai Usage 頁一致（真實、全產品 $），**唯一方法**是連 Claude Enterprise
-**Analytics API**（`tokens -Cloud`）。這需要一把 API key，而且：
-
-- **只有企業版 Primary Owner 能簽發**這把 key（`claude.ai > Organization settings > API`，scope `read:analytics`）。
-- **你不是 Primary Owner 就無法自行取得** —— 必須向擁有者申請；本專案作者／使用者**無權簽發**。
-- key 只放在本機 `.env`（gitignored），**絕不進 Git、絕不外傳**；本工具不代管、不要求你交出任何 key。
-- **沒有 key 時**：連外腳本自動略過（no-op），儀表板維持**純本機 / air-gapped**，只顯示 Claude Code CLI 的 token 分析與你手填的 $。這是預設、也是安全狀態。
-
-**關於 token 百分比（重要）：** 訂閱方案的真實上限是 **$ 花費額度**（例如 Usage 頁的
-「Spend limit $150／100% used」），**Anthropic 沒有官方的 token 配額可抓**。所以儀表板裡
-token 的 `%` 是對照一個**你自訂的參考值** `token_limit`，只是為了讓進度條有意義：
-
-- 目前的 `token_limit` 是把 **$150 月額度換算成 token**：用「你實際花 ~$150／月、實際用掉多少
-  token」的**實際費率**（快取重＋企業/credit 折扣後，約 $0.08／百萬 token）回推，得 **≈1,830,000,000
-  （18.3 億）／月**。儀表板上的 `(1,830,000,000)` 數字會標出來，不會誤導。
-  - 為什麼不用 Anthropic 清單價換算？因為你光 7 天的 token 量在清單價就要約 $278 > 月上限 $150，
-    代表你走的是折扣／credit 價；用清單價換算（$150≈2.3 億）會**低估**你的真實額度、讓錶爆滿。
-  - 這是個月額度；視窗預設 7 天，所以錶約顯示「這週用掉月額度的 ~1/4」。想看整月 → `tokens -Month`。
-- **想改成別的數字**：編輯 `config/usage-limits.json` 的 `"token_limit"`，下次開啟就套用
-  （設 `0` = 改回「佔本視窗總量的百分比」）。
-- `$` 那兩塊（Spend limit / credit）請照你 Claude Usage 頁的數字手填；**連外抓真實 $ 需要
-  Analytics API key，只有企業版 Primary Owner 能產**（見最後一節）。
-
-### 量表顏色（gauge）
-
-所有量表（Spend limit、credit、token）依使用百分比分四段上色：
-
-| 顏色 | 區間 | 意思 |
+| 來源 | 性質 | 說明 |
 |------|------|------|
-| 🟩 綠 | `< 50%` | 充裕 |
-| 🟨 黃 | `50–75%` | 過半、留意 |
-| 🟧 橙 | `75–90%` | 接近上限 |
-| 🟥 紅 | `≥ 90%` | 幾乎/已滿 |
+| **Cowork 區塊的 $** | ✅ **真實帳** | audit 的 `total_cost_usd`。已用官方牌價驗證：算 $236.80 vs 實帳 $236.83，**差 0.01%** |
+| **Code 區塊的 $** | 🟡 **計算值** | CLI 沒有金額欄位，用**官方牌價 × 實測 token 組成**算。算法已用 Cowork 實帳驗證（誤差 0.7%），但**不是你的帳單** |
+| 帳號整體 spend | ❌ 本機量不到 | 只有 claude.ai Usage 頁／Analytics API 有。沒抓到就不顯示 |
 
-門檻與色值集中在 `scripts/render_dashboard.py`：門檻在 `statusColor()`，色值在 CSS 變數
-`--good / --warn / --high / --critical`，要微調改這兩處即可。
+**Chat 的用量本機完全看不到**（不寫進任何本機檔），所以儀表板不含 Chat —— 這也是它和 claude.ai
+Usage 頁「Daily spend by product」**本來就不會一致**的原因（那是全部產品的 $）。沒掃到 ≠ 沒用。
 
-### Token 區塊用「錢」表示
-
-「Token usage · who spent what」每一列除了 token 數，也會顯示 **≈$ 估算花費**：以你的
-**$ 花費額度 ÷ `token_limit`** 當每-token 單價（即你的實際費率，約 $0.08／百萬 token）× 該列 token 數。
-這是**估算**（`≈`），只有在 config 同時有 `usage_limit.limit` 與 `token_limit` 時才顯示；否則退回純 token 數。
-
-### 四種分組怎麼看（who spent what）
-
-「Token usage」把用量用四種方式切開，每列都顯示 tokens、佔比 %、≈$ 估算：
-
-| 分組 | 依什麼歸戶 | 用途 | 是否含 nested |
-|------|-----------|------|:---:|
-| **By conversation** | 對話 (sessionId) | 哪一次 chat 花最多 | 否 |
-| **By project** | 工作目錄 (cwd) | 哪個專案花最多 | 否 |
-| **By skill** | 當下啟用的 skill（`attributionSkill`）；沒掛的算 `(no skill)` | 各 skill 耗多少 | 否 |
-| **By agent** | `attributionAgent`：主線=`(main thread)`、子代理=其類型（如 `general-purpose`） | 各 agent 耗多少 | **是** |
-
-- **單一對話的每日明細**：By conversation 每列前面有 **▸**，點開展開該對話的**逐日**用量（日期 · ≈$ · tokens · 佔該對話 % · turns）。跨天的對話會逐日列出。
-- **By agent 的計數口徑（重要）**：這是**唯一把子代理/workflow（nested）算進來**的分組。子代理的 transcript 平常被排除（避免和主線重複計算），只有 By agent 會納入 —— 所以它的**總量會比其它分組大**，區塊標題也標明「含 nested、總量與上方不同」。差額就是所有子代理/workflow 實際多耗的量。
-- 其餘三個分組（conversation / project / skill）維持 **nested excluded**，數字彼此一致。
-
-> 想讓「主線 + 子代理」全部一起算進 conversation/project/skill，可跑
-> `python scripts\token_report.py --include-nested`（會改變那三個分組的數字）。
-
-### Usage over time（每日花費趨勢）
-
-- **x 軸＝日期，以天為單位**，沒活動的日子補 0（不會跳過），涵蓋你產生時的資料範圍。
-- **範圍 filter**：圖上方三顆按鈕 **〔近 3 天〕〔近 7 天〕〔近一個月〕**，點下去**前端即時重畫**，不用重抓。
-  - 整段資料都烤進 HTML，按鈕只是重切；所以要三顆都完整，請用預設 `tokens`（30 天視窗）或 `tokens -Month` 產生。用 `tokens -Week` 產生的話「近一個月」最多也只有 7 天。
-  - 天數多時 x 標籤自動疏化（最多約 12 個）避免重疊，但每一天的資料點都在。
-- **y 軸＝每日估算花費（$）**＝當日 token × 你的實際費率（$ 花費額度 ÷ `token_limit`）。
-  - **紅色虛線＝月額度日均**：`usage_limit.limit ÷ 30`（例如 $150 → 約 $5/日）。超過線的那天就是花超過日均預算。
-  - 沒設 `token_limit` / `usage_limit.limit` 時，y 軸退回顯示 token 數（無 $、無虛線）。
-- **點一天＝與前一日的增減**：讀數與 tooltip 顯示「較前一日 **+X% / −X%**」（紅＝用更多、綠＝用更少；前一日為 0 顯示「新增」；範圍首日顯示「無前一日可比」）。
+> **參考換算**：以實測組成 × 官方牌價，**$1,000 ≈ 7～12 億 tokens**
+> （Code 的組成 ≈$0.86／百萬、Cowork ≈$1.41／百萬；cache_read 佔比越高越便宜）。
+> 這是**牌價等值**，不代表你的 credit 消耗 —— 企業方案實際計費可能不同。
 
 ---
 
-## 安裝手冊
+## 安裝
 
 ### 需求
-- **Windows** + Windows PowerShell 5.1（內建）或 PowerShell 7。
-- **Python 3.9+**（指令會依序試 `python` → `py` → `python3`）。
-- 你自己的 Claude Code 對話記錄在 `~/.claude/projects/`（用過 Claude Code 就會有）。
-- **不需要** API key、不需要 Docker、不需要連網。
+- **Windows** + Windows PowerShell 5.1（內建）或 PowerShell 7
+- **Python 3.9+**（指令會依序試 `python` → `py` → `python3`）
+- 用過 Claude Code（`~/.claude/projects` 有記錄）
+- **不需要** API key、Docker、或連網
 
 ### 步驟
 
 ```powershell
-# 1) 取得專案
 git clone https://github.com/Verna0519/Token-Monitor.git
-cd Token-Monitor\aocc-personal-ai-coach
+cd Token-Monitor
 
-# 2) 複製設定範本，填自己的數字（檔案是 gitignored，不會被推上去）
-Copy-Item config\usage-limits.template.json config\usage-limits.json
+# 唯一必要的設定：告訴它你的 Claude Code 記錄在哪
+python scripts\onboard.py --projects-root "$HOME\.claude\projects"
 
-# 3) 載入指令（注意開頭的「點 + 空白」），開啟儀表板
-. .\scripts\monitor.ps1
-tokens
+. .\scripts\monitor.ps1 ; tokens
 ```
 
-`tokens` 會：讀當下對話記錄 → 算用量 → 重建 HTML → 用瀏覽器開啟。
+**Cowork 完全零設定** —— 會自動偵測桌面 App 的資料夾（Windows／macOS／Linux 各自的預設路徑都會探測）；
+沒裝 Cowork 就自動略過該區塊。
 
-編輯 `config/usage-limits.json`，把 `$` 花費、credit %、resets／expires 日期、`operator`
-（你的名字）、`token_limit` 填成你自己的（對照 Claude Settings > Usage 頁）。
+選用：`Copy-Item config\usage-limits.template.json config\usage-limits.json` 後可填 `operator`（畫面上的名字）
+與 `window`（預設時間範圍）。**不填也能正常用**，而且不會憑空生出任何 $。
 
-> **執行原則擋住 dot-source？** 只放行「這個 shell」：
-> ```powershell
-> Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
-> ```
-
-### 一鍵「開啟＝重新整理」
-把 **`scripts\open-monitor.cmd`** 建個桌面捷徑，雙擊即可：重抓當下資料 → 重建 → 開啟。
-（HTML 是靜態快照，**在瀏覽器按 F5 不會重抓**，一定要重新產生。）
+> 執行原則擋住 dot-source 時，只放行這個 shell：
+> `Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned`
 
 ---
 
-## 重新抓取最新資料（最常用）
+## 看最新資料（三種方式）
 
-**從任何一個新的 PowerShell 視窗貼上這一行**，就會重讀你當下的對話記錄 → 重算 → 重建 HTML →
-開啟（把路徑換成你自己 clone 的位置）：
+儀表板是**靜態快照** —— **在瀏覽器按 F5 不會更新**，必須重新產生。
 
+**① 一次性設定後，任何 PowerShell 直接打 `tokens`**（推薦）
 ```powershell
-cd "C:\path\to\Token-Monitor\aocc-personal-ai-coach"; . .\scripts\monitor.ps1; tokens
+Add-Content $PROFILE ". 'C:\path\to\Token-Monitor\scripts\monitor.ps1' 6>`$null"
+```
+（`6>$null` 會靜音載入橫幅。之後開任何新視窗打 `tokens` 就是最新。）
+
+**② 一行貼上就開**（可貼進 Win+R）
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command ". 'C:\path\to\Token-Monitor\scripts\monitor.ps1'; Show-TokenDashboard"
 ```
 
-之後在**同一個視窗**，只要打 `tokens` 就會再抓一次最新的（每跑一次都重讀 `~/.claude/projects`）。
+**③ 雙擊** `scripts\open-monitor.cmd`（建個桌面捷徑；等同 ②）
 
-**不想先 cd／先 dot-source？一發就開**（可直接貼進 Win+R「執行」框，或任何一個新視窗）：
+每一種都會：重讀當下記錄 → 重算 Code＋Cowork → 重建 HTML → 開啟。
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -Command ". 'C:\path\to\Token-Monitor\aocc-personal-ai-coach\scripts\monitor.ps1'; Show-TokenDashboard"
-```
-
-這行和雙擊 `scripts\open-monitor.cmd` 效果一樣（`open-monitor.cmd` 內部就是跑這行）。加 `-Cloud`
-可連同真實 $ 一起抓（需 `ANALYTICS_API_KEY`）。
-
-**想在任何 PowerShell 視窗直接打 `tokens`？** 把 monitor.ps1 加進你的設定檔（一次性），之後每個新視窗都自動載入：
+### 常用指令
 
 ```powershell
-Add-Content $PROFILE ". 'C:\path\to\Token-Monitor\aocc-personal-ai-coach\scripts\monitor.ps1' 6>`$null"
-```
-
-（把 `C:\path\to\...` 換成你自己 clone 的實際路徑。）結尾的 `6>$null` 會把載入時的說明橫幅**靜音**，
-新視窗保持乾淨；拿掉它就會每次顯示指令清單。設好後開任何新視窗直接打 `tokens` 即可。
-
-> **重點：** 儀表板是靜態 HTML 快照 —— 在瀏覽器**按 F5 不會抓到新資料**，一定要用 `tokens`
-> （或雙擊 `scripts\open-monitor.cmd`／上面那行）重新產生才會是最新的。想讓開著的分頁自動更新，用
-> `Watch-MonitorDashboard -Every 300`（每 5 分鐘自動重抓＋重整，Ctrl+C 停）。
-
----
-
-## 日常使用（PowerShell）
-
-> **最簡單的日常：開任何一個新的 PowerShell 視窗，直接打 `tokens`。**
-> 前提是你做過上面的 `$PROFILE` 一次性設定（把 monitor.ps1 加進設定檔）——設好後每個新視窗都自動載入，
-> 不用再 `. .\scripts\monitor.ps1`。沒設定的話，就每個 shell 先手動 dot-source 一次（下面第一行）。
-> 打一次 `tokens` = 重讀當下 transcript → 重算 → 開儀表板，一定是最新。
-
-```powershell
-. .\scripts\monitor.ps1     # 沒設 $PROFILE 才需要：每個新 shell 載入一次（設過就免）
-
-tokens                      # 預設區間（config 的 window）；每跑一次都重抓最新資料
-tokens -Today               # 今天（台灣時間）
+tokens                      # 預設區間（config 的 window）
+tokens -Today               # 今天
 tokens -Week                # 近 7 天
 tokens -Month               # 近 30 天
 tokens -Days 14             # 近 N 天
 tokens -Since 2026-07-01 -Until 2026-07-15
 tokens -All                 # 全部時間
 tokens -NoOpen              # 只重建，不開瀏覽器
-tokens -Cloud               # 額外連外抓真實每日 $（需 ANALYTICS_API_KEY）
-```
+tokens -Cloud               # 額外連外抓真實 $（需 ANALYTICS_API_KEY）
 
-其他視圖（同一份資料）：
-
-```powershell
-Show-TokenMonitor -By skill -Week   # 在終端機用彩色長條顯示
-Watch-TokenMonitor -Every 60        # 終端機即時視圖，每 60 秒重畫（Ctrl+C 停）
-Watch-MonitorDashboard -Every 300   # 讓開著的 HTML 分頁每 5 分鐘自動重整
+Show-TokenMonitor -By skill -Week   # 終端機彩色長條
+Watch-TokenMonitor -Every 60        # 終端機即時視圖（Ctrl+C 停）
+Watch-MonitorDashboard -Every 300   # 開著的分頁每 5 分鐘自動更新
 Get-TokenReport -Days 7             # 純文字表格
 ```
 
-時間一律以 **台灣時間（UTC+8）** 為準；Python 腳本可用 `--utc-offset` 改。
+---
+
+## 額外工具
+
+**送出前估 token**（`count_tokens.py`）—— 估一段 prompt 的 **input** token：
+```powershell
+python scripts\count_tokens.py --text "你要送的內容"
+python scripts\count_tokens.py --file prompt.md
+```
+預設**離線粗估**（不連網、不用 key）；設了 `ANTHROPIC_API_KEY` 才改用官方
+`POST /v1/messages/count_tokens` 精算（**opt-in 連外**）。只算 input，不含 output／帳單。
+
+**連外抓真實 $**（`-Cloud`）—— 需要 **Claude Enterprise Analytics API key**，
+而該 key **只有企業版 Primary Owner 能簽發**（`claude.ai > Organization settings > API`，scope
+`read:analytics`）。填進 `.env` 的 `ANALYTICS_API_KEY` 後跑 `tokens -Cloud`。
+沒有 key 時連外腳本自動 no-op，維持離線。
 
 ---
 
 ## 檔案與隱私
 
-監控寫出的東西全在 `worktemp/`（或 `config/usage-limits.json`），**都是 gitignored、不會被追蹤**：
+寫出的東西全在 `worktemp/`（或 `config/usage-limits.json`），**都是 gitignored、不會被追蹤**：
 
-- `worktemp/token-usage.json` — token 統計（含帶身分的專案路徑／標題，僅本機）
+- `worktemp/token-usage.json` — Code token 統計（含專案路徑／標題，帶身分）
+- `worktemp/cowork-usage.json` — Cowork 統計（含 session id、真實 $）
 - `worktemp/dashboard.html` — 產生的儀表板
 - `worktemp/cloud-usage.json` — 連外抓來的 $（若有）
-- `config/usage-limits.json` — 你的方案數字與名字
-- `.env` — 你的 API key（若有）
+- `config/usage-limits.json`、`.env` — 你的設定與 key
 
-腳本以**唯讀**方式讀 `~/.claude/projects`，從不寫到 repo 外，也從不主動連網（除非你自己跑
-`-Cloud`）。詳細操作手冊見 [`scripts/README-monitor.md`](scripts/README-monitor.md)。
+腳本以**唯讀**方式讀對話記錄與 Cowork audit，從不寫到 repo 外，也**從不主動連網**
+（只有你自己跑 `-Cloud` 或設了 `ANTHROPIC_API_KEY` 的 `count_tokens.py` 才連）。
 
----
-
-## 分享給其他人
-
-這個 repo 可以安全分享 —— 所有個資都在 gitignored 檔案裡，隨附的只有 `*.template.json` /
-`.env.template` 佔位檔。**收件人只需一個指令就能抓到自己的數值**（已用全新 clone 實測驗證）：
-
-```powershell
-git clone https://github.com/Verna0519/Token-Monitor.git
-cd Token-Monitor
-
-# 唯一必要的設定：告訴它你的 Claude Code 對話記錄在哪（Windows/macOS/Linux 都是這個位置）
-python scripts\onboard.py --projects-root "$HOME\.claude\projects"
-
-. .\scripts\monitor.ps1 ; tokens
-```
-
-**收件人會拿到什麼（不用填任何數字）：**
-
-| 區塊 | 需要設定嗎 | 說明 |
-|------|-----------|------|
-| Claude Code token（對話／專案／skill／agent／每日） | 只需上面那行 `onboard` | 讀他自己的 `~/.claude/projects` |
-| **Cowork 真實 $**（per 聊天室＋每日） | **完全零設定** | 自動偵測桌面 App 的 Cowork 資料夾（Windows／macOS／Linux 各自的預設路徑都會探測）；沒裝 Cowork 就自動略過該區塊 |
-| `operator` 名字、預設時間範圍 | 選用 | `Copy-Item config\usage-limits.template.json config\usage-limits.json` 後填 |
-| 帳號整體 $ 花費 | 需 Analytics key | 沒 key 就**不顯示**（不會出現假數字） |
-
-**設計保證：** 儀表板**只顯示量得到的數字**。收件人不填任何 $，畫面也不會憑空生出金額 ——
-沒資料的區塊直接不出現。`token_limit` 預設 `0`（關閉），不會產生估算 $。
-
-> 若對話記錄不在預設位置，`token_report.py` 會**大聲失敗**並告訴你要設 `CLAUDE_PROJECTS_ROOT`
-> （RL2 契約：絕不靜默略過）。Cowork 路徑要覆寫則設 `COWORK_SESSIONS_ROOT`。
+**分享給別人是安全的** —— 個資都在 gitignored 檔案裡，隨附的只有 `*.template.json` /
+`.env.template` 佔位檔（已實測：全新 clone 只需上面那行 `onboard` 就能抓到自己的數值，
+且不會出現任何假數字）。
 
 ---
 
-## 連外抓 $（選用；真實 per-product 花費）
+## 疑難排解
 
-預設完全離線、$ 手填。要抓真實每日 $（chat / claude_code / cowork）需要
-**Claude Enterprise Analytics API key**：
-
-1. 企業版 **Primary Owner** 在 `claude.ai > Organization settings > API` 產一把（scope
-   `read:analytics`）。**只有 Primary Owner 能產**；你不是的話要跟對方拿。
-2. 填進 `.env`：`ANALYTICS_API_KEY=<你的 key>`（`.env` 是 gitignored）。
-3. 跑 `tokens -Cloud`。只想抓自己的用量（非全組織）→ 在 `config/usage-limits.json` 設
-   `"analytics_user_id"`。
-
-沒有 key 時，連外腳本自動 no-op，儀表板維持離線 —— 這是**唯一**會連外的腳本，且只在你手動開啟時執行。
-
----
-
-## 送出前估算 token（`count_tokens.py`）
-
-上面的儀表板是「**用完之後**」的實際用量。若你想在**送出一段 prompt 之前**先估它的 **input token**
-（做預算、判斷要不要精簡），用 `scripts/count_tokens.py`：
-
-```powershell
-# 離線（預設，air-gapped）：本機粗估，不連網、不用 key
-python scripts\count_tokens.py --text "你要送的內容"
-python scripts\count_tokens.py --file prompt.md
-"從 stdin 管進來的內容" | python scripts\count_tokens.py
-
-# 精確（選用，EGRESS）：設了 ANTHROPIC_API_KEY 就改用官方 API 精算
-python scripts\count_tokens.py --file prompt.md --model claude-opus-4-8
-python scripts\count_tokens.py --text hi --print-request   # 只看會送出什麼，不連網
-```
-
-- **預設離線**：沒設 key 時給本機粗估（latin ≈ 字元數/4、CJK ≈ /1.5），標成 `~approx`，**零連網**。
-- **精確模式（opt-in egress）**：`.env` 設 `ANTHROPIC_API_KEY`（一般 Messages API key，**不是** Analytics key）後，
-  改呼叫 `POST /v1/messages/count_tokens` 拿真實 `input_tokens`。這是**除 `fetch_usage_cloud.py` 外的第二個
-  會連外的腳本**，同樣只在你手動執行且有 key 時才連。
-- **只算 input**：count_tokens 只數「你要送進去」的 token，**不含 output、不含實際帳單** —— 事後實際用量請看儀表板（`tokens`）。
-
----
-
-## Cowork 用量（獨立區塊，真實 $）
-
-除了 Claude Code(讀 `~/.claude/projects`),儀表板另有一個**獨立的 Cowork 區塊**,資料來自桌面
-App 的本機 **`local-agent-mode-sessions/**/audit.jsonl`**(由 `scripts/cowork_report.py` 解析)。
-
-- **per 聊天室(chat room)**:依 Cowork `session_id` 分組,顯示**真實 $**、tokens、turns;點 ▸ 展開每日。
-- **每日真實花費**:Cowork 逐日 $ / tokens。
-- **真實 $ 不是估算**:金額取自 audit 的 `total_cost_usd`(每個 `result` 回合一筆,不重複計)。這比
-  Code 側的「估算 $」準 —— 因為 Code CLI 的 transcript 沒有 $ 欄位。
-- **和 Code 分開算**:Cowork 是不同產品,獨立成一塊,不與上方 Code 的 token 混在一起。
-- **來源路徑**:預設 `~/AppData/Roaming/Claude/local-agent-mode-sessions`(Windows);可在
-  `config/path-mappings.filled.yaml` 設 `COWORK_SESSIONS_ROOT` 覆寫。沒有 Cowork 資料時,這個區塊
-  自動不顯示。
-- **只影響監控工具**:這是 Token Monitor 多讀的一個本機來源,輸出一樣在 `worktemp/`(gitignored、
-  本機);**不進**能力座標 / 萃取管線(那條維持 Claude Code CLI only)。
-
-打 `tokens` 時會一併重算 Cowork(`cowork_report.py` 已接進儀表板產生流程)。
-
-### Cowork $ 的準確性驗證(為什麼可以信)
-
-Cowork 的 $ 不是估算 —— 我用**官方牌價逐筆重算**與 audit 記錄比對:
-
-| | 金額 |
-|---|---|
-| audit `total_cost_usd` 加總 | **$236.83** |
-| 依官方牌價重算 | **$236.80** |
-| **差異** | **0.01%** |
-
-重算方式:每筆 `result` 的 `modelUsage` 逐 model 套官方價
-(例 Opus:input \$5、output \$25、cache_read \$0.50、**cache_write \$10 = 1 小時 TTL 價**／百萬 token)。
-必須用 1h TTL 的快取寫入價才能完全對上 —— 這反證了 audit 的金額是**真實帳**。
-
-**Token 組成**(說明為何單價看起來低):
-
-| 類型 | 佔比 |
-|---|---|
-| `cache_read`(每回合重讀上下文,最便宜) | **91.5%** |
-| `cache_creation`(寫入快取,較貴) | 7.8% |
-| `output`(模型生成,最貴) | 0.7% |
-| `input` | 0.03% |
-
-混合單價約 **$1.40／百萬 token**;各 model 實測:Opus 4.8 \$1.41、Sonnet 5 \$1.10、Sonnet 4.6 \$0.60、Haiku 4.5 \$1.84。
-**口徑一致性**:token 數與 $ 都取自 `modelUsage`(比頂層 `usage` 多約 21%,因為含子代理回合)。
-
-**自動帶入 credit 已用:** 上方「Claude Code and Cowork credit」那格,若 config 設了
-`credit.amount_usd`(例如 $1000 池),會**自動**算出已用(每次叫出更新)——因為這個 credit **同時**
-被 Code 和 Cowork 吃掉,所以兩邊都算:
-
-```
-已用 ≈  Cowork 真實 $（實測，audit total_cost_usd）
-      ＋ Code 估算 $（CLI 無 $ 欄位，用你的費率換算）      ← 皆取「全時間」
-```
-
-取全時間是因為 credit 是**到期制**、不隨月重置。**Chat 不吃這個 credit**,故不計入。
-實測參考:某次為 Cowork $236.83 + Code ≈$119.21 ≈ **$356 / $1000 = 35.6%**,而 Usage 頁當時顯示
-**38%** —— 誤差來自 Code 那半是估算,量級是對的。
-
-`Spend limit · Chat`($150/月)維持**手填** —— Chat 用量本機完全看不到,沒填/為 0 時儀表板會直接
-標「此數字本機無法量測」並指引你去 claude.ai 查。
+- **`. .\scripts\monitor.ps1` 被擋** — 執行原則，用上面的 `-Scope Process` 那行。
+- **`FAIL: config/path-mappings.filled.yaml missing`** — 還沒跑 `onboard.py --projects-root`（設計如此：
+  找不到記錄會**大聲失敗**，不會靜默給你空數字）。
+- **Cowork 區塊沒出現** — 這台機器沒有 Cowork 資料；要覆寫路徑可在
+  `config/path-mappings.filled.yaml` 設 `COWORK_SESSIONS_ROOT`。
+- **終端機 CJK 亂碼** — 儀表板一定正常；主控台是舊 codepage 的顯示問題（腳本已強制 UTF-8 輸出，
+  不會因此中斷）。
+- **`monitor.ps1` 必須維持純 ASCII** — PS 5.1 會把 UTF-8-no-BOM 的 `.ps1` 當 ANSI 讀，原始碼含非
+  ASCII 會解析失敗（CJK 一律來自執行期讀 JSON）。
+- **找不到 python** — 安裝 Python 3.9+。
 
 ---
 
 ## 這個 repo 其實也是一個 agent
 
-Token Monitor 是內建在 **`aocc-personal-ai-coach`**（三層 AI 能力教練設計的個人層）裡的一套本機監控
-工具。整個 agent 的憲章、紅線（RL1–RL4）、能力座標管線等，見 [`CLAUDE.md`](CLAUDE.md) 與
-[`INDEX.md`](INDEX.md)。若你只是要看 token／$，上面的步驟就夠了。
+Token Monitor 內建在 **`aocc-personal-ai-coach`**（三層 AI 能力教練設計的個人層）裡。整個 agent 的
+憲章、紅線（RL1–RL4）、能力座標管線見 [`CLAUDE.md`](CLAUDE.md) 與 [`INDEX.md`](INDEX.md)。
+**Token Monitor 的 Cowork 讀取只服務監控**，不進能力座標／萃取管線（那條維持 Claude Code CLI only）。
+只想看 token／$ 的話，上面的內容就夠了。
 
 ---
 
 ## English summary
 
-**Token Monitor** is a local, **air-gapped** dashboard for your Claude Code **token / spend** usage:
-pure-stdlib Python + PowerShell, **zero network**, output only in `worktemp/` (gitignored). It reads
-your local transcripts (`~/.claude/projects/**/*.jsonl`) read-only and rolls token usage up by
-**conversation / project / skill**, with a daily trend and your Usage-page **$ limits**.
+**Token Monitor** is a local, air-gapped dashboard for **Claude Code + Cowork** token/spend usage:
+pure-stdlib Python + PowerShell, no network by default, output only in `worktemp/` (gitignored).
 
-**Install:** need Windows PowerShell + Python 3.9+ (no API key, no Docker, no network).
-`git clone` → `cd aocc-personal-ai-coach` → `Copy-Item config\usage-limits.template.json
-config\usage-limits.json` → `. .\scripts\monitor.ps1` → `tokens`. Or make a desktop shortcut to
-`scripts\open-monitor.cmd` for one-click "open = refresh".
+**Guiding rule — only measured numbers are shown.** Blocks whose data cannot be measured are simply
+not rendered; no stale hand-typed values, no $ invented from assumptions.
 
-**Current state:** the **token** section is live from local transcripts on every run; the **$ /
-credit** blocks are **manually filled** in `config/usage-limits.json` (mirror your Usage page).
-There is **no official Anthropic token quota** — the real cap is the **$ spend limit** — so the
-token `%` is measured against a **self-set** `token_limit` (currently `1,830,000,000`, i.e. the $150
-monthly limit converted at your *effective* rate — your 7d volume would list at ~$278 > $150, so you
-are on discounted/credit pricing and list-price conversion understates your real allowance; shown on
-the face; change it in config, or set `0` for "% of window total"). Real per-product **$** requires an
-Enterprise Analytics API key that only a Primary Owner can mint (`tokens -Cloud`). Full ops manual:
-[`scripts/README-monitor.md`](scripts/README-monitor.md). This repo is also the
-`aocc-personal-ai-coach` agent — see [`CLAUDE.md`](CLAUDE.md).
+**What it shows:** recent activity → daily usage curve (per-day x-axis, 3/7/30-day filter, default 7d,
+day-over-day delta, timezone stated and cross-checked against your machine) → who spent what
+(**by conversation / project / skill / agent**, each row expandable to name its members) →
+**Code** block (token composition + per-model; $ computed from official list prices, since the CLI
+records no $) → **Cowork** block (per chat room + per day with **REAL $** from `audit.jsonl`,
+verified to 0.01% against official pricing).
+
+**Install:** Windows PowerShell + Python 3.9+, no API key, no Docker, no network.
+`git clone` → `python scripts\onboard.py --projects-root "$HOME\.claude\projects"` →
+`. .\scripts\monitor.ps1 ; tokens`. Cowork needs zero configuration (OS-default paths are probed).
+
+**Not covered:** Chat usage and your real account spend are not in any local file — only
+claude.ai's Usage page / the Analytics API have them (`tokens -Cloud`, key mintable only by an
+Enterprise Primary Owner). This repo is also the `aocc-personal-ai-coach` agent — see
+[`CLAUDE.md`](CLAUDE.md).

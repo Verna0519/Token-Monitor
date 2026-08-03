@@ -636,6 +636,19 @@ __REFRESH_META__
     }
     var tzLabel=(scc.timezone)||"UTC+8";
     var winPulled=(scc.window_since? scc.window_since : (days[0]&&days[0].date)||"?")+" → "+(scc.window_until? scc.window_until : "now");
+    // Timezone honesty: transcripts store UTC (ISO ...Z); the report converts with --utc-offset.
+    // If that offset differs from THIS machine's own offset, day boundaries won't match local days.
+    var repOff=(scc.utc_offset!=null)? Number(scc.utc_offset) : 8;
+    var machOff=-(new Date().getTimezoneOffset())/60;
+    var tzNote="時區：原始 timestamp 為 <b>UTC</b>（transcript 存 ISO <code>…Z</code>），換算為 <b>"+
+      tzLabel+"</b>（<code>--utc-offset "+repOff+"</code>）。";
+    if(machOff!==repOff){
+      tzNote+=" <b>⚠️ 你這台機器是 UTC"+(machOff>=0?"+":"")+machOff+
+        "</b>，與換算用的 "+tzLabel+" <b>不同</b> —— 每日分界會以 "+tzLabel+" 為準，非你的當地日。"+
+        "要改用當地時間請跑 <code>python scripts\\token_report.py --utc-offset "+machOff+"</code>。";
+    } else {
+      tzNote+=" 與你這台機器的時區<b>一致</b>。";
+    }
     var bar=h("div","rangebar");
     var rangeInfo=h("div","rangeinfo");
     var chart=h("div");                 // curve container, re-rendered on range change
@@ -668,7 +681,8 @@ __REFRESH_META__
       if(pts.length){
         pick(pts[pts.length-1]);
         rangeInfo.innerHTML="抓入區間（產生時實際掃到）：<b>"+winPulled+"</b>（"+tzLabel+"）"+
-          " &middot; 目前顯示 <b>"+pts[0].label+" → "+pts[pts.length-1].label+"</b>（"+pts.length+" 天）";
+          " &middot; 目前顯示 <b>"+pts[0].label+" → "+pts[pts.length-1].label+"</b>（"+pts.length+" 天）"+
+          "<br>"+tzNote;
       }
     }
     var ranges=[{n:3,label:"近 3 天"},{n:7,label:"近 7 天"},{n:30,label:"近一個月"}];
