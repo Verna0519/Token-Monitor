@@ -489,33 +489,6 @@ __REFRESH_META__
         function(r){return r.skill+" — "+n(r.total)+" total, "+r.msgs+" turns";}, denom, rate,
         function(r){return memberList(r,"用到這個 skill 的對話");}));
     }
-    // token composition (same lens as the Cowork block) — measured, no $
-    var cmp=T.composition;
-    if(cmp && cmp.total>0){
-      card.appendChild(h("div","sectlead","<b>Token 組成</b>（本視窗，來自每個 turn 的 <code>message.usage</code>）"));
-      var ct=h("table");
-      var rowsC=[["cache_read（重讀上下文，最便宜）","cache_read_input_tokens"],
-                 ["cache_creation（寫入快取，較貴）","cache_creation_input_tokens"],
-                 ["output（模型生成，最貴）","output_tokens"],
-                 ["input（新輸入）","input_tokens"]];
-      var htmlC="<thead><tr><th>類型</th><th>tokens</th><th>佔比</th></tr></thead><tbody>";
-      rowsC.forEach(function(r){ var v=cmp[r[1]]||0;
-        htmlC+="<tr><td>"+r[0]+"</td><td class='mono'>"+n(v)+"</td><td class='mono'>"+(v/cmp.total*100).toFixed(2)+"%</td></tr>"; });
-      htmlC+="<tr><td><b>total</b></td><td class='mono'><b>"+n(cmp.total)+"</b></td><td class='mono'>100%</td></tr></tbody>";
-      ct.innerHTML=htmlC; card.appendChild(ct);
-      card.appendChild(h("p","cap","<b>此區無 $</b> —— Claude Code 的 CLI 記錄沒有金額欄位（Cowork 才有）。"+
-        "cache_read 佔比高屬正常：每回合重讀上下文，計價僅約新輸入的 1/10。"));
-    }
-    if((T.by_model||[]).length){
-      card.appendChild(h("div","sectlead","<b>各 model</b>（依每個 turn 的 <code>message.model</code>；tokens 實測，無 $）"));
-      var mt=h("table");
-      var htmlM="<thead><tr><th>model</th><th>tokens</th><th>佔比</th><th>turns</th></tr></thead><tbody>";
-      T.by_model.slice(0,8).forEach(function(m){
-        htmlM+="<tr><td class='mono'>"+m.model+"</td><td class='mono'>"+n(m.total)+"</td><td class='mono'>"+
-          (grand>0?(m.total/grand*100).toFixed(2):"0")+"%</td><td class='mono'>"+n(m.msgs)+"</td></tr>";
-      });
-      htmlM+="</tbody>"; mt.innerHTML=htmlM; card.appendChild(mt);
-    }
     if((T.by_agent||[]).length){
       var agTot = T.by_agent_total || T.by_agent.reduce(function(a,r){return a+(r.total||0);},0);
       var nestedDelta = agTot - grand;
@@ -724,6 +697,74 @@ __REFRESH_META__
     app.appendChild(card);
   }
 
+  // Official list prices per 1M tokens: [input, output, cache_read, cache_write@1h-TTL].
+  // The 1h-TTL cache-write price (2x input) is what reconciles Cowork's audit total_cost_usd with
+  // list pricing to ~0.01%, so the same basis is used to COST Claude Code (which records no $).
+  var PRICE={
+    "claude-opus-4-8":[5,25,0.50,10], "claude-opus-4-7":[5,25,0.50,10], "claude-opus-4-6":[5,25,0.50,10],
+    "claude-opus-5":[5,25,0.50,10], "claude-fable-5":[10,50,1.00,20],
+    "claude-sonnet-5":[3,15,0.30,6], "claude-sonnet-4-6":[3,15,0.30,6],
+    "claude-haiku-4-5":[1,5,0.10,2], "claude-haiku-4-5-20251001":[1,5,0.10,2]
+  };
+  function priceRow(r){                 // r has the 4 token fields; returns $ or null if model unknown
+    var p=PRICE[r.model]; if(!p) return null;
+    return ((r.input_tokens||0)*p[0] + (r.output_tokens||0)*p[1] +
+            (r.cache_read_input_tokens||0)*p[2] + (r.cache_creation_input_tokens||0)*p[3])/1e6;
+  }
+  function compTable(cmp){
+    var t=h("table");
+    var rows=[["cache_read（重讀上下文，最便宜）","cache_read_input_tokens"],
+              ["cache_creation（寫入快取，較貴）","cache_creation_input_tokens"],
+              ["output（模型生成，最貴）","output_tokens"],
+              ["input（新輸入）","input_tokens"]];
+    var html="<thead><tr><th>類型</th><th>tokens</th><th>佔比</th></tr></thead><tbody>";
+    rows.forEach(function(r){ var v=cmp[r[1]]||0;
+      html+="<tr><td>"+r[0]+"</td><td class='mono'>"+n(v)+"</td><td class='mono'>"+
+        (cmp.total>0?(v/cmp.total*100).toFixed(2):"0")+"%</td></tr>"; });
+    html+="<tr><td><b>total</b></td><td class='mono'><b>"+n(cmp.total)+"</b></td><td class='mono'>100%</td></tr></tbody>";
+    t.innerHTML=html; return t;
+  }
+
+  function renderCodeLocal(){
+    var cmp=T.composition, models=(T.by_model||[]);
+    if(!cmp || !(cmp.total>0)) return;
+    var card=h("div","card");
+    card.appendChild(h("h2","","Code &middot; 本機用量（token 實測；$ 依官方牌價計算）"));
+    // cost each model row with its own price, from its own measured composition
+    var costed=0, unknown=0, anyCost=false;
+    models.forEach(function(m){ var c=priceRow(m); if(c==null){ unknown+=(m.total||0); } else { costed+=c; anyCost=true; } });
+    card.appendChild(h("div","scopenote",
+      "來源：本機 Claude Code CLI 記錄（<code>~/.claude/projects</code>）的每個 turn <code>message.usage</code>。"+
+      "CLI <b>沒有金額欄位</b>，所以這裡的 $ 是<b>用官方牌價 × 實測 token 組成算出來的</b>（非帳單）。"+
+      "此算法已用 Cowork 的實際帳單驗證：官方價算 $238.41 vs 實帳 $236.83，<b>誤差 0.7%</b>。"+
+      (unknown>0? " 有 "+n(unknown)+" tokens 的 model 未知、未計價。" : "")));
+    var tiles=h("div","tiles");
+    tiles.appendChild(tileEl("total tokens", n(cmp.total)));
+    if(anyCost){
+      tiles.appendChild(tileEl("$ at list price (calc)", usd(costed)));
+      tiles.appendChild(tileEl("$ per 1M tok", "$"+(costed/cmp.total*1e6).toFixed(4)));
+    }
+    tiles.appendChild(tileEl("assistant turns", n((T.totals||{}).msgs)));
+    card.appendChild(tiles);
+    card.appendChild(h("div","sectlead","<b>Token 組成</b>（本視窗，來自 <code>message.usage</code>）"));
+    card.appendChild(compTable(cmp));
+    card.appendChild(h("p","cap","cache_read 佔比高屬正常：每回合重讀上下文，計價僅約新輸入的 1/10 —— 這也是本區單價"+
+      "比 Cowork 低的原因（Cowork 的 cache_creation 佔比較高，而寫入快取較貴）。"));
+    if(models.length){
+      card.appendChild(h("div","sectlead","<b>各 model</b>（依 <code>message.model</code>；$ 為官方牌價計算）"));
+      var mt=h("table");
+      var html="<thead><tr><th>model</th><th>$ (calc)</th><th>tokens</th><th>佔比</th><th>turns</th></tr></thead><tbody>";
+      models.slice(0,8).forEach(function(m){
+        var c=priceRow(m);
+        html+="<tr><td class='mono'>"+m.model+"</td><td class='mono'>"+(c!=null? usd(c):"&mdash;")+
+          "</td><td class='mono'>"+n(m.total)+"</td><td class='mono'>"+
+          (cmp.total>0?(m.total/cmp.total*100).toFixed(2):"0")+"%</td><td class='mono'>"+n(m.msgs)+"</td></tr>";
+      });
+      html+="</tbody>"; mt.innerHTML=html; card.appendChild(mt);
+    }
+    app.appendChild(card);
+  }
+
   function renderCoworkLocal(){
     if(!CW || !CW.available || !(CW.by_room||[]).length) return;
     var tot=CW.totals||{}, sc=CW.scope||{};
@@ -742,18 +783,7 @@ __REFRESH_META__
     var comp=CW.composition;
     if(comp && comp.total>0){
       card.appendChild(h("div","sectlead","<b>Token 組成</b>（全時間，basis: <code>modelUsage</code>，與 $ 同一來源）"));
-      var ct=h("table");
-      var rowsC=[["cache_read（重讀上下文，最便宜）","cache_read_input_tokens"],
-                 ["cache_creation（寫入快取，較貴）","cache_creation_input_tokens"],
-                 ["output（模型生成，最貴）","output_tokens"],
-                 ["input（新輸入）","input_tokens"]];
-      var htmlC="<thead><tr><th>類型</th><th>tokens</th><th>佔比</th></tr></thead><tbody>";
-      rowsC.forEach(function(r){
-        var v=comp[r[1]]||0;
-        htmlC+="<tr><td>"+r[0]+"</td><td class='mono'>"+n(v)+"</td><td class='mono'>"+(v/comp.total*100).toFixed(2)+"%</td></tr>";
-      });
-      htmlC+="<tr><td><b>total</b></td><td class='mono'><b>"+n(comp.total)+"</b></td><td class='mono'>100%</td></tr></tbody>";
-      ct.innerHTML=htmlC; card.appendChild(ct);
+      card.appendChild(compTable(comp));
       var lifeC=(CW.lifetime&&CW.lifetime.cost_usd)||0;
       if(lifeC>0){
         card.appendChild(h("p","cap","全時間 "+usd(lifeC)+" ÷ "+n(comp.total)+" tokens = <b>$"+
@@ -894,11 +924,14 @@ __REFRESH_META__
       renderLimits(); renderCloud();
       app.appendChild(h("div","empty",
         "No token data yet. Run <code>token_report.py</code> (or <code>Show-MonitorDashboard</code>) and reload.")); return; }
-    renderRecent();          // recent activity FIRST (operator ruling)
+    // Order (operator ruling): recent activity -> usage over time -> who spent what
+    //                          -> Code local -> Cowork local -> legend -> help
+    renderRecent();
     renderLimits();
     renderCloud();
-    renderTokenBars();
     renderCurve();
+    renderTokenBars();
+    renderCodeLocal();
     renderCoworkLocal();
     renderLegend();
     renderHelp();
