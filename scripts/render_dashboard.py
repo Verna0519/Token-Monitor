@@ -419,6 +419,29 @@ __REFRESH_META__
     tiles.appendChild(tileEl("cache read", n(tot.cache_read_input_tokens)));
     tiles.appendChild(tileEl("assistant turns", n(tot.msgs)));
     card.appendChild(tiles);
+    // 總佔比 — this window's tokens as a share of what the credit pool buys, converted at OFFICIAL
+    // list prices using THIS window's own measured token mix (a list-price equivalence, not a bill).
+    var pool=(L.credit_pool_usd && Number(L.credit_pool_usd)>0)? Number(L.credit_pool_usd) : 0;
+    if(pool>0 && (T.by_model||[]).length && tot.total>0){
+      var cst=0, unk=0;
+      T.by_model.forEach(function(m){ var c=priceRow(m); if(c==null){ unk+=(m.total||0); } else { cst+=c; } });
+      if(cst>0){
+        var rateM=cst/tot.total;                 // $ per token, from measured mix
+        var poolTok=pool/rateM;                  // tokens that the pool buys at this mix
+        var shp=tot.total/poolTok*100;
+        var sub=n(tot.total)+" tokens / "+n(Math.round(poolTok))+" tokens（"+usd(pool)+
+          " 以本視窗實測組成 $"+(rateM*1e6).toFixed(4)+"／百萬 換算）&middot; 依官方牌價，<b>非帳單</b>";
+        card.appendChild(gaugeRow("總佔比 &mdash; 本視窗 tokens ÷ "+usd(pool)+" 可換 tokens",
+          Math.min(100,shp), sub, statusColor(Math.min(100,shp))));
+        card.appendChild(h("p","cap","實際比例 <b>"+shp.toFixed(1)+"%</b>"+(shp>100? "（已超過 100%）":"")+
+          "。換算隨 cache 佔比變動：cache_read 多則單價低、"+usd(pool)+" 能買到的 token 就多"+
+          "（你的兩邊實測：Code &asymp;$0.86／百萬、Cowork &asymp;$1.41／百萬 &rArr; "+usd(pool)+
+          " &asymp; <b>7～12 億 tokens</b>）。"+
+          (unk>0? " 有 "+n(unk)+" tokens 的 model 未知、未計價。":"")+
+          " <b>注意</b>：這是「牌價等值」而非你的實際帳單 —— 企業方案的實際計費可能不同"+
+          "（例如 Usage 頁顯示的 credit 已用比例若明顯低於此數，代表 Code 並非按牌價全額扣抵）。"));
+      }
+    }
     var grand=tot.total||0, top=8;
     var denom = grand;
     // per-conversation daily breakdown (click a chat to expand its day-by-day usage)

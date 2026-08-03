@@ -11,6 +11,9 @@
     "resets": null
   },
 
+  "_note_credit_pool_usd": "OPTIONAL, 0 = OFF. Size of your Claude Code + Cowork credit pool in $. Used ONLY to show '總佔比' = this window's tokens as a share of what that $ buys, converted at OFFICIAL LIST PRICES using your own measured token mix. It is a list-price equivalence, NOT your bill — enterprise billing may differ.",
+  "credit_pool_usd": 0,
+
   "_note_token_limit": "0 = OFF, and OFF is correct. There is no official Anthropic token quota, and deriving a $-per-token rate from a made-up token_limit produced numbers that measured data contradicted by ~21x — so all estimated-$ output was removed. Only set this if you have a REAL, measured figure.",
   "token_limit": 0,
 
