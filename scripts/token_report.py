@@ -122,6 +122,7 @@ def total_of(d):
 def collect(projects_root, project_filter, include_nested, since, until, tz):
     by_conv, by_proj, by_skill, by_day = {}, defaultdict(zero), defaultdict(zero), defaultdict(zero)
     by_agent = defaultdict(zero)                       # who did the work: (main thread) + each subagent type
+    by_model = defaultdict(zero)                       # which model produced the turns
     conv_day = defaultdict(lambda: defaultdict(zero))  # per-conversation daily breakdown (session -> day -> tokens)
     # cross-tabs so each row can NAME its members (which chats / which skills)
     members = {"project": defaultdict(lambda: defaultdict(int)),   # project -> session -> tokens
@@ -150,13 +151,13 @@ def collect(projects_root, project_filter, include_nested, since, until, tz):
             else:
                 stats["files"] += 1
             _read_file(full, nested, include_nested, by_conv, conv_meta, by_proj, by_skill,
-                       by_day, by_agent, conv_day, grand, since, until, tz, stats, life, members)
+                       by_day, by_agent, conv_day, grand, since, until, tz, stats, life, members, by_model)
 
-    return by_conv, conv_meta, by_proj, by_skill, by_day, by_agent, conv_day, grand, stats, life, members
+    return by_conv, conv_meta, by_proj, by_skill, by_day, by_agent, conv_day, grand, stats, life, members, by_model
 
 
 def _read_file(path, nested, include_nested, by_conv, conv_meta, by_proj, by_skill,
-               by_day, by_agent, conv_day, grand, since, until, tz, stats, life=None, members=None):
+               by_day, by_agent, conv_day, grand, since, until, tz, stats, life=None, members=None, by_model=None):
     count_main = (not nested) or include_nested   # feed the standard lenses?
     windowed = since is not None or until is not None
     try:
@@ -243,6 +244,11 @@ def _read_file(path, nested, include_nested, by_conv, conv_meta, by_proj, by_ski
                 by_day[day]["msgs"] += 1
                 conv_day[sess][day]["msgs"] += 1
             # cross-tabs: which chats make up this project / skill / agent (for named drilldowns)
+            if by_model is not None:
+                _mdl = (o.get("message") or {}).get("model") or "(unknown)"
+                for k in TOKKEYS:
+                    by_model[_mdl][k] += usage.get(k, 0) or 0
+                by_model[_mdl]["msgs"] += 1
             if members is not None:
                 _t = sum(usage.get(k, 0) or 0 for k in TOKKEYS)
                 members["project"][cwd][sess] += _t
@@ -312,7 +318,7 @@ def main():
             until = parse_local_dt(args.until, tz, end=True)
 
     root = resolve_projects_root()
-    by_conv, conv_meta, by_proj, by_skill, by_day, by_agent, conv_day, grand, stats, life, members = collect(
+    by_conv, conv_meta, by_proj, by_skill, by_day, by_agent, conv_day, grand, stats, life, members, by_model = collect(
         root, args.project, args.include_nested, since, until, tz)
 
     conv_rows = _rows(by_conv, "session", tz, conv_meta)
@@ -398,6 +404,8 @@ def main():
             "by_skill": skill_rows,
             "by_agent": agent_rows,
             "by_agent_total": agent_total,
+            "by_model": _rows(by_model, "model", tz),
+            "composition": {**{k: grand[k] for k in TOKKEYS}, "total": gtot},
             "by_day": day_rows,
         }
         os.makedirs(os.path.dirname(args.json_out), exist_ok=True)

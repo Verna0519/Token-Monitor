@@ -489,6 +489,33 @@ __REFRESH_META__
         function(r){return r.skill+" — "+n(r.total)+" total, "+r.msgs+" turns";}, denom, rate,
         function(r){return memberList(r,"用到這個 skill 的對話");}));
     }
+    // token composition (same lens as the Cowork block) — measured, no $
+    var cmp=T.composition;
+    if(cmp && cmp.total>0){
+      card.appendChild(h("div","sectlead","<b>Token 組成</b>（本視窗，來自每個 turn 的 <code>message.usage</code>）"));
+      var ct=h("table");
+      var rowsC=[["cache_read（重讀上下文，最便宜）","cache_read_input_tokens"],
+                 ["cache_creation（寫入快取，較貴）","cache_creation_input_tokens"],
+                 ["output（模型生成，最貴）","output_tokens"],
+                 ["input（新輸入）","input_tokens"]];
+      var htmlC="<thead><tr><th>類型</th><th>tokens</th><th>佔比</th></tr></thead><tbody>";
+      rowsC.forEach(function(r){ var v=cmp[r[1]]||0;
+        htmlC+="<tr><td>"+r[0]+"</td><td class='mono'>"+n(v)+"</td><td class='mono'>"+(v/cmp.total*100).toFixed(2)+"%</td></tr>"; });
+      htmlC+="<tr><td><b>total</b></td><td class='mono'><b>"+n(cmp.total)+"</b></td><td class='mono'>100%</td></tr></tbody>";
+      ct.innerHTML=htmlC; card.appendChild(ct);
+      card.appendChild(h("p","cap","<b>此區無 $</b> —— Claude Code 的 CLI 記錄沒有金額欄位（Cowork 才有）。"+
+        "cache_read 佔比高屬正常：每回合重讀上下文，計價僅約新輸入的 1/10。"));
+    }
+    if((T.by_model||[]).length){
+      card.appendChild(h("div","sectlead","<b>各 model</b>（依每個 turn 的 <code>message.model</code>；tokens 實測，無 $）"));
+      var mt=h("table");
+      var htmlM="<thead><tr><th>model</th><th>tokens</th><th>佔比</th><th>turns</th></tr></thead><tbody>";
+      T.by_model.slice(0,8).forEach(function(m){
+        htmlM+="<tr><td class='mono'>"+m.model+"</td><td class='mono'>"+n(m.total)+"</td><td class='mono'>"+
+          (grand>0?(m.total/grand*100).toFixed(2):"0")+"%</td><td class='mono'>"+n(m.msgs)+"</td></tr>";
+      });
+      htmlM+="</tbody>"; mt.innerHTML=htmlM; card.appendChild(mt);
+    }
     if((T.by_agent||[]).length){
       var agTot = T.by_agent_total || T.by_agent.reduce(function(a,r){return a+(r.total||0);},0);
       var nestedDelta = agTot - grand;
@@ -863,12 +890,14 @@ __REFRESH_META__
       base += " &middot; "+(sc.timezone||"UTC+8")+" &middot; window: "+win;
     }
     document.getElementById("subline").innerHTML = op + base + " &middot; generated __GENERATED__";
+    if(!T || !T.totals){
+      renderLimits(); renderCloud();
+      app.appendChild(h("div","empty",
+        "No token data yet. Run <code>token_report.py</code> (or <code>Show-MonitorDashboard</code>) and reload.")); return; }
+    renderRecent();          // recent activity FIRST (operator ruling)
     renderLimits();
     renderCloud();
-    if(!T || !T.totals){ app.appendChild(h("div","empty",
-      "No token data yet. Run <code>token_report.py</code> (or <code>Show-MonitorDashboard</code>) and reload.")); return; }
     renderTokenBars();
-    renderRecent();
     renderCurve();
     renderCoworkLocal();
     renderLegend();
