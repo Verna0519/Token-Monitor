@@ -437,37 +437,69 @@ __REFRESH_META__
         var sh = r.total>0 ? (dd.total/r.total*100) : 0;
         box.appendChild(h("div","subday",
           "<span class='sd-date'>"+dd.date+"</span><span class='sd-val'>"+
-          (rate>0?("&asymp;"+usd(dd.total*rate)+" &middot; "):"")+n(dd.total)+" tok &middot; "+
-          sh.toFixed(1)+"% of this chat &middot; "+dd.msgs+" turns</span>"));
+          n(dd.total)+" tok &middot; "+sh.toFixed(1)+"% of this chat &middot; "+dd.msgs+" turns</span>"));
+      });
+      // which skills this chat used (names, not ids)
+      var sks=(r.skills||[]);
+      if(sks.length){
+        box.appendChild(h("div","subday","<span class='sd-date'><b>用到的 skill</b></span><span class='sd-val'></span>"));
+        sks.slice(0,6).forEach(function(s){
+          var sh2 = r.total>0 ? (s.total/r.total*100) : 0;
+          box.appendChild(h("div","subday","<span class='sd-date'>&nbsp;&nbsp;"+s.skill+
+            "</span><span class='sd-val'>"+n(s.total)+" tok &middot; "+sh2.toFixed(1)+"%</span>"));
+        });
+      }
+      return box;
+    }
+    // generic drilldown: name the conversations that make up a project / skill / agent row
+    function memberList(r, whatLabel){
+      var ms=(r.members||[]);
+      if(!ms.length) return null;
+      var box=h("div","subdays");
+      box.appendChild(h("div","subday","<span class='sd-date'><b>"+whatLabel+"</b></span>"+
+        "<span class='sd-val'>共 "+ms.length+" 個對話</span>"));
+      ms.slice(0,8).forEach(function(m){
+        var sh = r.total>0 ? (m.total/r.total*100) : 0;
+        box.appendChild(h("div","subday","<span class='sd-date'>"+m.name+
+          " <span class='muted'>("+(m.session||"").slice(0,8)+")</span></span><span class='sd-val'>"+
+          n(m.total)+" tok &middot; "+sh.toFixed(1)+"%</span>"));
       });
       return box;
     }
     if((T.by_conversation||[]).length){
-      card.appendChild(h("div","sectlead","<b>By conversation</b> &mdash; per chat (top "+top+"); 點箭頭看每日明細"));
+      card.appendChild(h("div","sectlead","<b>By conversation</b> &mdash; 依<b>對話 (sessionId)</b> 分組；"+
+        "名稱來自 <code>customTitle</code>／<code>aiTitle</code>（top "+top+"）。點 &#9656; 看每日明細、用到的 skill、紀錄檔"));
       card.appendChild(barBlock(T.by_conversation.slice(0,top),
         function(r){return r.title||(r.session||"").slice(0,12);},
         function(r){return (r.title||r.session)+" — "+n(r.total)+" total, "+r.msgs+" turns";}, denom, rate, convDaily));
     }
     if((T.by_project||[]).length){
-      card.appendChild(h("div","sectlead","<b>By project</b> &mdash; per working directory (top "+top+")"));
+      card.appendChild(h("div","sectlead","<b>By project</b> &mdash; 依<b>工作目錄 <code>cwd</code></b> 分組"+
+        "（每個 turn 當下所在的資料夾，top "+top+"）。點 &#9656; 看是哪些對話貢獻的"));
       card.appendChild(barBlock(T.by_project.slice(0,top),
         function(r){var p=String(r.project||"");return p.replace(/[\\/]+$/,"").split(/[\\/]/).pop()||p;},
-        function(r){return r.project+" — "+n(r.total)+" total";}, denom, rate));
+        function(r){return r.project+" — "+n(r.total)+" total";}, denom, rate,
+        function(r){return memberList(r,"這個專案底下的對話");}));
     }
     if((T.by_skill||[]).length){
-      card.appendChild(h("div","sectlead","<b>By skill</b> &mdash; while each skill was active (top "+top+")"));
+      card.appendChild(h("div","sectlead","<b>By skill</b> &mdash; 依每個 turn 的 <code>attributionSkill</code> 分組"+
+        "（該 skill <b>作用期間</b>產生的 token；沒掛 skill 的歸 <code>(no skill)</code>，top "+top+"）。點 &#9656; 看是哪些對話用到"));
       card.appendChild(barBlock(T.by_skill.slice(0,top),
         function(r){return r.skill;},
-        function(r){return r.skill+" — "+n(r.total)+" total, "+r.msgs+" turns";}, denom, rate));
+        function(r){return r.skill+" — "+n(r.total)+" total, "+r.msgs+" turns";}, denom, rate,
+        function(r){return memberList(r,"用到這個 skill 的對話");}));
     }
     if((T.by_agent||[]).length){
       var agTot = T.by_agent_total || T.by_agent.reduce(function(a,r){return a+(r.total||0);},0);
       var nestedDelta = agTot - grand;
-      card.appendChild(h("div","sectlead","<b>By agent</b> &mdash; 主線 + 子代理/workflow"+
-        "（<b>含 nested</b>，故總量 "+n(agTot)+" 比上方多 "+n(nestedDelta>0?nestedDelta:0)+"；% 為佔 agent 總量）"));
+      card.appendChild(h("div","sectlead","<b>By agent</b> &mdash; 依每個 turn 的 <code>attributionAgent</code> 分組："+
+        "主線 = <code>(main thread)</code>、子代理 = 其類型（如 <code>general-purpose</code>）。"+
+        "<b>唯一含 nested</b>（子代理/workflow 的 transcript），故總量 "+n(agTot)+" 比上方多 "+
+        n(nestedDelta>0?nestedDelta:0)+"；% 為佔 agent 總量。點 &#9656; 看是哪些對話"));
       card.appendChild(barBlock(T.by_agent.slice(0,top),
         function(r){return r.agent;},
-        function(r){return r.agent+" — "+n(r.total)+" total, "+r.msgs+" turns";}, agTot, rate));
+        function(r){return r.agent+" — "+n(r.total)+" total, "+r.msgs+" turns";}, agTot, rate,
+        function(r){return memberList(r,"這個 agent 出現的對話");}));
     }
     app.appendChild(card);
   }
@@ -642,7 +674,7 @@ __REFRESH_META__
       bar.appendChild(b); btns.push(b);
     });
     card.appendChild(bar); card.appendChild(rangeInfo); card.appendChild(chart); card.appendChild(readout);
-    var defIdx=2;                        // default: 近一個月（最寬，歷史都看得到）
+    var defIdx=1;                        // default: 近 7 天（operator ruling）
     btns[defIdx].classList.add("active"); draw(ranges[defIdx].n);
     app.appendChild(card);
   }
@@ -679,6 +711,41 @@ __REFRESH_META__
     tiles.appendChild(tileEl("chat rooms", n(tot.rooms)));
     tiles.appendChild(tileEl("runs", n(tot.results)));
     card.appendChild(tiles);
+    // token composition (why $/token looks low: almost everything is cheap cache_read)
+    var comp=CW.composition;
+    if(comp && comp.total>0){
+      card.appendChild(h("div","sectlead","<b>Token 組成</b>（全時間，basis: <code>modelUsage</code>，與 $ 同一來源）"));
+      var ct=h("table");
+      var rowsC=[["cache_read（重讀上下文，最便宜）","cache_read_input_tokens"],
+                 ["cache_creation（寫入快取，較貴）","cache_creation_input_tokens"],
+                 ["output（模型生成，最貴）","output_tokens"],
+                 ["input（新輸入）","input_tokens"]];
+      var htmlC="<thead><tr><th>類型</th><th>tokens</th><th>佔比</th></tr></thead><tbody>";
+      rowsC.forEach(function(r){
+        var v=comp[r[1]]||0;
+        htmlC+="<tr><td>"+r[0]+"</td><td class='mono'>"+n(v)+"</td><td class='mono'>"+(v/comp.total*100).toFixed(2)+"%</td></tr>";
+      });
+      htmlC+="<tr><td><b>total</b></td><td class='mono'><b>"+n(comp.total)+"</b></td><td class='mono'>100%</td></tr></tbody>";
+      ct.innerHTML=htmlC; card.appendChild(ct);
+      var lifeC=(CW.lifetime&&CW.lifetime.cost_usd)||0;
+      if(lifeC>0){
+        card.appendChild(h("p","cap","全時間 "+usd(lifeC)+" ÷ "+n(comp.total)+" tokens = <b>$"+
+          (lifeC/comp.total*1e6).toFixed(4)+" / 百萬 token</b>（混合單價）。單價看起來低是因為 <b>"+
+          (comp.cache_read_input_tokens/comp.total*100).toFixed(1)+
+          "% 是 cache_read</b>（每回合重讀上下文，計價僅約新輸入的 1/10）。"));
+      }
+      var bm=CW.by_model||[];
+      if(bm.length){
+        card.appendChild(h("div","sectlead","<b>各 model</b>（實測 $ 與單價）"));
+        var mt=h("table");
+        var htmlM="<thead><tr><th>model</th><th>real $</th><th>tokens</th><th>$/1M tok</th></tr></thead><tbody>";
+        bm.forEach(function(m){
+          htmlM+="<tr><td class='mono'>"+m.model+"</td><td class='mono'>"+usd(m.cost_usd)+"</td><td class='mono'>"+
+            n(m.total)+"</td><td class='mono'>"+(m.usd_per_mtok!=null? ("$"+m.usd_per_mtok) : "&mdash;")+"</td></tr>";
+        });
+        htmlM+="</tbody>"; mt.innerHTML=htmlM; card.appendChild(mt);
+      }
+    }
     // by chat room (real $), share of Cowork total
     var gtot=tot.cost_usd||0, top=8;
     card.appendChild(h("div","sectlead","<b>By chat room</b> &mdash; per Cowork session (top "+top+")；點 &#9656; 看每日"));

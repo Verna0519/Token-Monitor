@@ -123,6 +123,11 @@ def collect(projects_root, project_filter, include_nested, since, until, tz):
     by_conv, by_proj, by_skill, by_day = {}, defaultdict(zero), defaultdict(zero), defaultdict(zero)
     by_agent = defaultdict(zero)                       # who did the work: (main thread) + each subagent type
     conv_day = defaultdict(lambda: defaultdict(zero))  # per-conversation daily breakdown (session -> day -> tokens)
+    # cross-tabs so each row can NAME its members (which chats / which skills)
+    members = {"project": defaultdict(lambda: defaultdict(int)),   # project -> session -> tokens
+               "skill":   defaultdict(lambda: defaultdict(int)),   # skill   -> session -> tokens
+               "agent":   defaultdict(lambda: defaultdict(int)),   # agent   -> session -> tokens
+               "conv_skills": defaultdict(lambda: defaultdict(int))}  # session -> skill -> tokens
     conv_meta = {}
     grand = zero()
     life = zero()   # ALL-TIME totals, ignoring the window (used for lifetime pools e.g. the credit)
@@ -145,13 +150,13 @@ def collect(projects_root, project_filter, include_nested, since, until, tz):
             else:
                 stats["files"] += 1
             _read_file(full, nested, include_nested, by_conv, conv_meta, by_proj, by_skill,
-                       by_day, by_agent, conv_day, grand, since, until, tz, stats, life)
+                       by_day, by_agent, conv_day, grand, since, until, tz, stats, life, members)
 
-    return by_conv, conv_meta, by_proj, by_skill, by_day, by_agent, conv_day, grand, stats, life
+    return by_conv, conv_meta, by_proj, by_skill, by_day, by_agent, conv_day, grand, stats, life, members
 
 
 def _read_file(path, nested, include_nested, by_conv, conv_meta, by_proj, by_skill,
-               by_day, by_agent, conv_day, grand, since, until, tz, stats, life=None):
+               by_day, by_agent, conv_day, grand, since, until, tz, stats, life=None, members=None):
     count_main = (not nested) or include_nested   # feed the standard lenses?
     windowed = since is not None or until is not None
     try:
@@ -237,6 +242,13 @@ def _read_file(path, nested, include_nested, by_conv, conv_meta, by_proj, by_ski
             if day is not None:
                 by_day[day]["msgs"] += 1
                 conv_day[sess][day]["msgs"] += 1
+            # cross-tabs: which chats make up this project / skill / agent (for named drilldowns)
+            if members is not None:
+                _t = sum(usage.get(k, 0) or 0 for k in TOKKEYS)
+                members["project"][cwd][sess] += _t
+                members["skill"][skill][sess] += _t
+                members["agent"][agent][sess] += _t
+                members["conv_skills"][sess][skill] += _t
 
 
 def _rows(bucket_map, key_name, tz, meta=None):
@@ -300,7 +312,7 @@ def main():
             until = parse_local_dt(args.until, tz, end=True)
 
     root = resolve_projects_root()
-    by_conv, conv_meta, by_proj, by_skill, by_day, by_agent, conv_day, grand, stats, life = collect(
+    by_conv, conv_meta, by_proj, by_skill, by_day, by_agent, conv_day, grand, stats, life, members = collect(
         root, args.project, args.include_nested, since, until, tz)
 
     conv_rows = _rows(by_conv, "session", tz, conv_meta)
@@ -309,10 +321,32 @@ def main():
         cd = conv_day.get(r["session"], {})
         r["by_day"] = [{"date": day, "total": total_of(cd[day]), "msgs": cd[day].get("msgs", 0)}
                        for day in sorted(cd.keys())]
+    # name each conversation (title if known, else short session id) for the drilldowns
+    conv_name = {}
+    for sess, m in conv_meta.items():
+        conv_name[sess] = (m.get("title") or sess[:8])
+    def named(bucket, key):
+        """Turn {session: tokens} into a named, sorted member list for a row's drilldown."""
+        d = bucket.get(key) or {}
+        out = [{"session": s, "name": conv_name.get(s, s[:8]), "total": v} for s, v in d.items() if v]
+        out.sort(key=lambda x: -x["total"])
+        return out
+
     proj_rows = _rows(by_proj, "project", tz)
+    for r in proj_rows:
+        r["members"] = named(members["project"], r["project"])
     skill_rows = _rows(by_skill, "skill", tz)
+    for r in skill_rows:
+        r["members"] = named(members["skill"], r["skill"])
     agent_rows = _rows(by_agent, "agent", tz)
+    for r in agent_rows:
+        r["members"] = named(members["agent"], r["agent"])
     agent_total = sum(r["total"] for r in agent_rows)
+    # which skills each conversation used (shown inside a chat's drilldown)
+    for r in conv_rows:
+        sk = members["conv_skills"].get(r["session"]) or {}
+        r["skills"] = sorted([{"skill": k, "total": v} for k, v in sk.items() if v],
+                             key=lambda x: -x["total"])
     day_rows = []
     for day in sorted(by_day.keys()):
         d = by_day[day]

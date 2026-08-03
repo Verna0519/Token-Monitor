@@ -196,7 +196,15 @@ def main():
     room_day = defaultdict(lambda: defaultdict(lambda: {"cost": 0.0, "total": 0}))
     by_day = defaultdict(lambda: {"cost": 0.0, "total": 0, "results": 0})
     grand = {"cost": 0.0, "total": 0, "results": 0}
-    life = {"cost": 0.0, "total": 0, "results": 0}   # ALL-TIME (ignores window) — for the lifetime credit pool
+    life = {"cost": 0.0, "total": 0, "results": 0}   # ALL-TIME (ignores window)
+    # token composition + per-model split, taken from modelUsage (same basis as costUSD, and more
+    # complete than the top-level `usage` — it includes sub-agent turns).
+    comp = {"input_tokens": 0, "output_tokens": 0,
+            "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}
+    per_model = {}
+    _MU = {"inputTokens": "input_tokens", "outputTokens": "output_tokens",
+           "cacheCreationInputTokens": "cache_creation_input_tokens",
+           "cacheReadInputTokens": "cache_read_input_tokens"}
     labels = {}
     windowed = since is not None or until is not None
 
@@ -218,8 +226,25 @@ def main():
                 cost = o.get("total_cost_usd")
                 if not isinstance(cost, (int, float)):
                     continue
-                _u0 = o.get("usage") or {}
-                _t0 = sum(_u0.get(k, 0) or 0 for k in TOKKEYS)
+                # tokens for this run: prefer modelUsage (matches costUSD, includes sub-agents)
+                mu = o.get("modelUsage")
+                if isinstance(mu, dict) and mu:
+                    _t0 = 0
+                    for _m, _d in mu.items():
+                        if not isinstance(_d, dict):
+                            continue
+                        pm = per_model.setdefault(_m, {"cost": 0.0, "total": 0})
+                        pm["cost"] += _d.get("costUSD", 0) or 0
+                        for _src, _dst in _MU.items():
+                            v = _d.get(_src, 0) or 0
+                            _t0 += v
+                            comp[_dst] += v
+                            pm["total"] += v
+                else:
+                    _u0 = o.get("usage") or {}
+                    _t0 = sum(_u0.get(k, 0) or 0 for k in TOKKEYS)
+                    for k in TOKKEYS:
+                        comp[k] += _u0.get(k, 0) or 0
                 life["cost"] += cost; life["total"] += _t0; life["results"] += 1   # all-time, pre-window
                 dt = parse_ts(o.get("timestamp"))
                 if windowed:
@@ -228,8 +253,7 @@ def main():
                     if (since and dt < since) or (until and dt > until):
                         continue
                 sid = o.get("session_id") or "?"
-                u = o.get("usage") or {}
-                toks = sum(u.get(k, 0) or 0 for k in TOKKEYS)
+                toks = _t0                      # same basis as cost (modelUsage) — see above
                 turns = o.get("num_turns") or 0
                 day = dt.astimezone(tz).strftime("%Y-%m-%d") if dt is not None else None
 
@@ -306,6 +330,12 @@ def main():
                    "rooms": len(rooms), "results": grand["results"]},
         "lifetime": {"cost_usd": round(life["cost"], 2), "total": life["total"],
                      "results": life["results"]},
+        "composition": {**comp, "total": sum(comp.values()),
+                        "basis": "modelUsage (same basis as costUSD; includes sub-agent turns)"},
+        "by_model": sorted(
+            [{"model": m, "cost_usd": round(d["cost"], 4), "total": d["total"],
+              "usd_per_mtok": round(d["cost"] / d["total"] * 1e6, 4) if d["total"] else None}
+             for m, d in per_model.items()], key=lambda x: -x["cost_usd"]),
         "by_room": rooms,
         "by_day": days,
     }
