@@ -360,10 +360,22 @@ __REFRESH_META__
     var c2=h("div","card");
     c2.appendChild(h("h2","","Claude Code and Cowork credit"));
     var cr=L.credit||{};
-    if(cr.note) c2.appendChild(h("p","cap", cr.note));
-    var cpct=(cr.used_pct!=null)? Number(cr.used_pct) : pctOf(cr.used,cr.total);
-    var csub=(cr.expires? whenInfo(cr.expires,"expires") : "expiry not set");
-    if(cpct==null) csub="在 config/usage-limits.json 填 credit.used_pct / expires";
+    var pool=(cr.amount_usd && Number(cr.amount_usd)>0)? Number(cr.amount_usd) : 0;
+    var cwLife=(CW && CW.available && CW.lifetime)? Number(CW.lifetime.cost_usd||0) : 0;
+    var cpct, csub, capNote;
+    if(pool>0 && cwLife>0){
+      // AUTO, keyless: measured Cowork $ (all-time) as a LOWER BOUND of credit used
+      cpct=Math.min(100, cwLife/pool*100);
+      csub="&ge; "+usd(cwLife)+" / "+usd(pool)+" 已用（下限）"+(cr.expires? (" &middot; "+whenInfo(cr.expires,"expires")) : "");
+      capNote="已用為<b>實測下限</b>：只含本機量到的 <b>Cowork 真實 $</b>（"+usd(cwLife)+
+        "，每次叫出自動更新）；<b>未含 Chat 與 Code 的 $</b>（本機量不到）。池大小 "+usd(pool)+" 由 config 填。";
+    } else {
+      cpct=(cr.used_pct!=null)? Number(cr.used_pct) : pctOf(cr.used,cr.total);
+      csub=(cr.expires? whenInfo(cr.expires,"expires") : "expiry not set");
+      if(cpct==null) csub="在 config/usage-limits.json 填 credit.amount_usd + used_pct / expires";
+      capNote=cr.note||"";
+    }
+    if(capNote) c2.appendChild(h("p","cap", capNote));
     c2.appendChild(gaugeRow(cr.label||"Included credit", cpct, csub, statusColor(cpct==null?0:cpct)));
     c2.appendChild(fetchedLine());
     app.appendChild(c2);

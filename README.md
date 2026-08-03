@@ -346,6 +346,11 @@ App 的本機 **`local-agent-mode-sessions/**/audit.jsonl`**(由 `scripts/cowork
 
 打 `tokens` 時會一併重算 Cowork(`cowork_report.py` 已接進儀表板產生流程)。
 
+**自動帶入 credit 下限:** 上方「Claude Code and Cowork credit」那格,若 config 設了
+`credit.amount_usd`(例如 $1000 池),會**自動**把量到的 **Cowork 真實 $(全時間)** 當「已用」的
+**下限**顯示(`≥ $X / $1000`,每次叫出更新),並標明**未含 Chat 與 Code 的 $**(那些本機量不到)。
+`Spend limit · Chat`($150/月)則維持手填 —— Chat 用量本機看不到。這是唯一能免 key、自動更新的 $。
+
 ---
 
 ## 這個 repo 其實也是一個 agent

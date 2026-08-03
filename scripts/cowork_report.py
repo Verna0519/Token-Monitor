@@ -159,6 +159,7 @@ def main():
     room_day = defaultdict(lambda: defaultdict(lambda: {"cost": 0.0, "total": 0}))
     by_day = defaultdict(lambda: {"cost": 0.0, "total": 0, "results": 0})
     grand = {"cost": 0.0, "total": 0, "results": 0}
+    life = {"cost": 0.0, "total": 0, "results": 0}   # ALL-TIME (ignores window) — for the lifetime credit pool
     labels = {}
     windowed = since is not None or until is not None
 
@@ -180,6 +181,9 @@ def main():
                 cost = o.get("total_cost_usd")
                 if not isinstance(cost, (int, float)):
                     continue
+                _u0 = o.get("usage") or {}
+                _t0 = sum(_u0.get(k, 0) or 0 for k in TOKKEYS)
+                life["cost"] += cost; life["total"] += _t0; life["results"] += 1   # all-time, pre-window
                 dt = parse_ts(o.get("timestamp"))
                 if windowed:
                     if dt is None:
@@ -266,6 +270,8 @@ def main():
                   "window_since": win_since, "window_until": win_until},
         "totals": {"cost_usd": round(grand["cost"], 2), "total": grand["total"],
                    "rooms": len(rooms), "results": grand["results"]},
+        "lifetime": {"cost_usd": round(life["cost"], 2), "total": life["total"],
+                     "results": life["results"]},
         "by_room": rooms,
         "by_day": days,
     }
