@@ -349,10 +349,18 @@ __REFRESH_META__
          " &middot; "+whenInfo(u.resets,"resets"))
       : "在 config/usage-limits.json 填 usage_limit.spent / limit / resets";
     c1.appendChild(gaugeRow(u.label||"Spend limit", pct, sub, statusColor(pct==null?0:pct)));
+    var staleSpend = (!fromCloud) && (spent==null || Number(spent)===0);
     c1.appendChild(h("p","cap", (fromCloud
       ? "spent 由 Enterprise Analytics API 連外抓取；limit / resets 由 <code>config/usage-limits.json</code> 提供。"
-      : "數值由你填入 <code>config/usage-limits.json</code>（air-gapped）。加 <code>-Cloud</code> 可連外抓真實 spent。")+
+      : "spent <b>由你手填</b>（<code>config/usage-limits.json</code>）。加 <code>-Cloud</code> 可連外抓真實 spent（需 Analytics key）。")+
       " 這裡的 $ 是<b>整個帳號、所有產品</b>（Chat + Cowork + Claude Code）；下方的 token 分析<b>只含 Claude Code CLI</b>，兩者範圍不同。"));
+    if(staleSpend){
+      c1.appendChild(h("div","scopenote",
+        "⚠️ <b>此數字本機無法量測</b> —— Chat 用量不寫進任何本機檔，這格只會是你手填的值（目前 "+
+        cur+Number(spent||0).toLocaleString()+"，看起來還沒更新）。要看真實已花多少，請上 "+
+        "<b>claude.ai &gt; Settings &gt; Usage</b> 查，再把數字填回 <code>config/usage-limits.json</code> 的 "+
+        "<code>usage_limit.spent</code>。（唯一能自動抓的 $ 是下方 Cowork 的實測值。）"));
+    }
     c1.appendChild(fetchedLine());
     app.appendChild(c1);
 
