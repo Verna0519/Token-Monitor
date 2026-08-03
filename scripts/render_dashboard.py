@@ -358,28 +358,11 @@ __REFRESH_META__
       app.appendChild(c1);
     }
 
-    var cr=L.credit||{};
-    var pool=(cr.amount_usd && Number(cr.amount_usd)>0)? Number(cr.amount_usd) : 0;
-    var cwLife=(CW && CW.available && CW.lifetime)? Number(CW.lifetime.cost_usd||0) : 0;
-    // the credit covers BOTH products, so include Code too: real Cowork $ + estimated Code $
-    var tlimK=(L.token_limit&&Number(L.token_limit)>0)?Number(L.token_limit):0;
-    var ulimK=(u.limit&&Number(u.limit)>0)?Number(u.limit):0;
-    var rateK=(tlimK>0&&ulimK>0)?(ulimK/tlimK):0;
-    var codeLifeTok=(T && T.lifetime && T.lifetime.total)? Number(T.lifetime.total) : 0;
-    var codeLifeEst=(rateK>0 && codeLifeTok>0)? codeLifeTok*rateK : 0;
-    var usedEst=cwLife+codeLifeEst;
-    if(!(pool>0 && usedEst>0)) return;   // cannot auto-compute -> omit the block entirely
-    var c2=h("div","card");
-    c2.appendChild(h("h2","","Claude Code and Cowork credit"));
-    var cpct=Math.min(100, usedEst/pool*100);
-    var csub="&asymp;"+usd(usedEst)+" / "+usd(pool)+" 已用"+(cr.expires? (" &middot; "+whenInfo(cr.expires,"expires")) : "");
-    c2.appendChild(h("p","cap",
-      "已用為<b>自動計算</b>（每次叫出更新）＝ <b>Cowork "+usd(cwLife)+"（實測真實 $）</b> ＋ "+
-      "<b>Code &asymp;"+usd(codeLifeEst)+"（估算</b>，CLI 記錄無 $ 欄位，以你的費率換算）"+
-      "，皆取<b>全時間</b>（credit 是到期制、不隨月重置）。池大小 "+usd(pool)+" 由 config 填；"+
-      "<b>Chat 不吃這個 credit</b>，故不計入。"));
-    c2.appendChild(gaugeRow(cr.label||"Included credit", cpct, csub, statusColor(cpct)));
-    app.appendChild(c2);
+    // The "Claude Code and Cowork credit" block was REMOVED (operator ruling): it required a
+    // per-token $ rate for the Code half, and that rate (usage_limit.limit / token_limit) was a
+    // circular, never-validated assumption — the one measured rate (Cowork real $/token) differs
+    // from it by ~21x. An inaccurate number is worse than no number, so it is not rendered.
+    // Cowork's own block still shows REAL $ (from audit total_cost_usd), which is measured.
   }
 
   function barBlock(rows, nameFn, tipFn, grand, rate, detailFn){
@@ -420,44 +403,24 @@ __REFRESH_META__
       "或需 <code>-Cloud</code> 連外抓。因此本區的每日與總額和 Usage 頁的「Daily spend by product」"+
       "<b>本來就不會一致</b>（那是全部產品的 $）。沒掃到不代表沒用。"));
     var sc=T.scope||{}, tot=T.totals||{};
-    var tlim = (L.token_limit && Number(L.token_limit) > 0) ? Number(L.token_limit) : 0;
-    var ulim = (L.usage_limit && Number(L.usage_limit.limit) > 0) ? Number(L.usage_limit.limit) : 0;
-    // $ per token: tie the money conversion to the SAME basis as token_limit
-    // (token_limit was derived so that it == the $ spend limit). 0 => money view off.
-    var rate = (ulim > 0 && tlim > 0) ? (ulim / tlim) : 0;
-    var cur = (L.usage_limit && L.usage_limit.currency) || "$";
-    var pctBasis = tlim > 0
-      ? ("% = 佔 token_limit (" + tlim.toLocaleString() + ") 的比例 — 此為<b>自訂參考值</b>，"
-         + "方案的真實上限是 $ 花費額度（config <code>usage_limit.limit</code>），Anthropic 並無官方 token 配額；在 config 可改")
-      : "% = 佔本視窗總量的比例（在 config 設 token_limit 可改為佔額度%）";
-    var moneyBasis = rate > 0
-      ? (" &middot; <b>"+cur+" 為估算</b>：以 "+cur+ulim.toLocaleString()+" 花費額度 &divide; token_limit 換算"
-         + "（約 "+cur+(rate*1e6).toFixed(3)+"／百萬 token，你的實際費率）")
-      : "";
+    // NOTE: all estimated-$ output was REMOVED here (operator ruling). Claude Code CLI transcripts
+    // carry NO $ field, and the former per-token rate (usage_limit.limit / token_limit) was a
+    // circular assumption that measured data contradicts by ~21x. This section now shows only
+    // MEASURED tokens; % is a share of the window total (a fact, not an assumption).
+    var rate = 0;   // keep the barBlock signature; 0 => token display only, never a fake $
     card.appendChild(h("p","cap",
       "counted "+(sc.files_counted||0)+" transcript file(s); nested sub-agent/workflow "+
-      (sc.include_nested?"included":"excluded")+". "+pctBasis+moneyBasis+". 'total' is mostly "+
-      "cache_read (cheap re-reads); 'out' = generated tokens."));
+      (sc.include_nested?"included":"excluded")+". % = 佔本視窗總量的比例。"+
+      "<b>此區不顯示 $</b> —— CLI 記錄沒有金額欄位，任何換算都只是假設（真實 $ 只在 claude.ai Usage 頁；"+
+      "Cowork 區塊的 $ 才是實測）。'total' is mostly cache_read (cheap re-reads); 'out' = generated tokens."));
     var tiles=h("div","tiles");
     tiles.appendChild(tileEl("total tokens", n(tot.total)));
-    if(rate>0){ tiles.appendChild(tileEl("≈ "+cur+" this window (est)", usd(tot.total*rate))); }
-    if(tlim>0){
-      var usedPct=Math.min(100,(tot.total/tlim)*100);
-      tiles.appendChild(tileEl("of token limit", usedPct.toFixed(1)+"%"));
-    } else if(rate<=0){
-      tiles.appendChild(tileEl("generated (output)", n(tot.output_tokens)));
-    }
-    if(rate<=0){ tiles.appendChild(tileEl("cache read", n(tot.cache_read_input_tokens))); }
+    tiles.appendChild(tileEl("generated (output)", n(tot.output_tokens)));
+    tiles.appendChild(tileEl("cache read", n(tot.cache_read_input_tokens)));
     tiles.appendChild(tileEl("assistant turns", n(tot.msgs)));
     card.appendChild(tiles);
-    if(rate>0 && ulim>0){
-      var estSpend=tot.total*rate, spendPct=Math.min(100, estSpend/ulim*100);
-      var sub="&asymp;"+usd(estSpend)+" / "+cur+ulim.toLocaleString()+" 月額度 &middot; 本視窗 token 換算的<b>估算</b>花費，"+
-        "非真實帳單（真實 spent 只在 claude.ai Usage 頁，或用 <code>-Cloud</code> 連外抓）";
-      card.appendChild(gaugeRow("本視窗估算花費 / 月額度 (est. spend vs monthly limit)", spendPct, sub, statusColor(spendPct)));
-    }
     var grand=tot.total||0, top=8;
-    var denom = tlim > 0 ? tlim : grand;
+    var denom = grand;
     // per-conversation daily breakdown (click a chat to expand its day-by-day usage)
     function convDaily(r){
       var days=(r.by_day||[]);
@@ -611,16 +574,11 @@ __REFRESH_META__
     if(!days.length) return;
     var card=h("div","card");
     card.appendChild(h("h2","","Usage over time"));
-    // $ conversion (same basis as elsewhere): $ per token = spend limit / token_limit
-    var tlimC=(L.token_limit&&Number(L.token_limit)>0)?Number(L.token_limit):0;
-    var ulimC=(L.usage_limit&&Number(L.usage_limit.limit)>0)?Number(L.usage_limit.limit):0;
-    var rateC=(tlimC>0&&ulimC>0)?(ulimC/tlimC):0;
-    var curSym=(L.usage_limit&&L.usage_limit.currency)||"$";
-    var dailyBudget = ulimC>0 ? ulimC/30 : 0;   // 月額度日均
-    card.appendChild(h("p","cap", rateC>0
-      ? ("每日<b>估算花費（"+curSym+"）</b>＝當日 token × 你的實際費率；紅色虛線＝<b>月額度日均</b>（"+
-         curSym+ulimC.toLocaleString()+"÷30≈"+curSym+dailyBudget.toFixed(1)+"／日）。用按鈕切換範圍；點一天看<b>與前一日的增減</b>。")
-      : "每日 token 用量（台灣時間，以天為單位，無活動日補 0）。用按鈕切換範圍；點一天看與前一日的增減。"));
+    // y-axis is MEASURED tokens. The former "$ per day vs monthly budget line" was removed with
+    // the rest of the estimated-$ output (its rate was an unvalidated assumption).
+    card.appendChild(h("p","cap",
+      "每日 <b>token</b> 用量（台灣時間，以天為單位，無活動日補 0）。用按鈕切換範圍；點一天看<b>與前一日的增減</b>。"+
+      "（不換算 $ —— CLI 記錄無金額欄位。）"));
     // build the FULL daily series (window_since .. today), zero-filled; buttons re-slice it client-side
     var byDate={}; days.forEach(function(d){ byDate[d.date]=d; });
     function iso(dt){ return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0"); }
@@ -645,15 +603,15 @@ __REFRESH_META__
     var rangeInfo=h("div","rangeinfo");
     var chart=h("div");                 // curve container, re-rendered on range change
     var readout=h("div","readout");
-    function valOf(p){ return rateC>0 ? p.tok*rateC : p.tok; }
-    function fmtVal(p){ return rateC>0 ? usd(valOf(p)) : n(p.tok); }
+    function valOf(p){ return p.tok; }          // tokens only (no $ conversion — see note above)
+    function fmtVal(p){ return n(p.tok); }
     function deltaHtml(p){
       if(p.delta==null) return "（範圍首日，無前一日可比）";
       if(!isFinite(p.delta)) return "前一日為 0 &rarr; <b>新增</b>";
       var up=p.delta>=0; return "較前一日 <b style='color:"+(up?"var(--critical)":"var(--good)")+"'>"+
         (up?"+":"−")+Math.abs(p.delta).toFixed(1)+"%</b>";
     }
-    function pick(p){ readout.innerHTML="選取 <b>"+p.label+"</b> &mdash; "+fmtVal(p)+(rateC>0?" 估算":" tokens")+
+    function pick(p){ readout.innerHTML="選取 <b>"+p.label+"</b> &mdash; "+fmtVal(p)+" tokens"+
       " &middot; out "+n(p.out)+" &middot; "+p.msgs+" turns &middot; "+deltaHtml(p); }
     function draw(nDays){
       var pts = (nDays>0 && allPts.length>nDays) ? allPts.slice(allPts.length-nDays) : allPts.slice();
@@ -663,12 +621,11 @@ __REFRESH_META__
         else { var prev=pts[i-1].val; p.delta = prev>0 ? ((p.val-prev)/prev*100) : (p.val>0? Infinity : 0); }
       });
       var opts={
-        yfmt: function(v){ return rateC>0 ? (curSym+(Math.round(v*10)/10)) : Math.round(v).toLocaleString(); },
-        valLabel: function(pp){ return rateC>0 ? usd(pp.val) : Number(pp.val||0).toLocaleString(); },
-        tip: function(pp){ return "<b>"+pp.label+"</b><br><b>"+fmtVal(pp)+"</b>"+(rateC>0?" 估算花費":" tokens")+
-          "<br>"+deltaHtml(pp)+"<br>"+n(pp.tok)+" tok · out "+n(pp.out)+" · "+pp.msgs+" turns"; }
+        yfmt: function(v){ return Math.round(v).toLocaleString(); },
+        valLabel: function(pp){ return Number(pp.val||0).toLocaleString(); },
+        tip: function(pp){ return "<b>"+pp.label+"</b><br><b>"+fmtVal(pp)+"</b> tokens"+
+          "<br>"+deltaHtml(pp)+"<br>out "+n(pp.out)+" · "+pp.msgs+" turns"; }
       };
-      if(rateC>0 && dailyBudget>0) opts.refLine={val:dailyBudget, label:"月額度日均 "+curSym+dailyBudget.toFixed(1)};
       chart.innerHTML="";
       chart.appendChild(curve(pts, function(p){ pick(p); }, opts));
       if(pts.length){
@@ -781,16 +738,17 @@ __REFRESH_META__
     g.innerHTML=
       "<div><b>total</b> — 該範圍全部 token（含快取，數字大屬正常）</div>"+
       "<div><b>output</b>（列上標 <b>out</b>）— 模型實際生成的 token</div>"+
-      "<div><b>%</b> — token 各列佔『可用額度』(config token_limit) 或視窗總量的比例</div>"+
-      "<div><b>&asymp;$</b>（各列）— 以 $ 花費額度 &divide; token_limit 換算的<b>估算</b>花費（你的實際費率）</div>"+
+      "<div><b>%</b> — 該列佔<b>本視窗總量</b>的比例（實測值的佔比）</div>"+
+      "<div><b>$</b> — <b>只有 Cowork 區塊有 $</b>（audit 實測真實花費）。Claude Code 區塊<b>不顯示 $</b>："+
+        "CLI 記錄沒有金額欄位，換算只會是假設</div>"+
       "<div><b>cache read</b> — 每回合重讀的上下文（計費便宜）</div>"+
       "<div><b>turns</b> — assistant 回合數</div>"+
       "<div><b>By conversation</b> — 依<b>對話 (session)</b> 分組：一段 chat 的全部 token</div>"+
       "<div><b>By project</b> — 依<b>工作目錄 (cwd)</b> 分組：同一個專案資料夾底下的 token</div>"+
       "<div><b>By skill</b> — 依<b>當下啟用的 skill</b> 分組；沒掛 skill 的算 (no skill)。"+
         "子代理 / workflow 目前<b>不計入</b>（nested excluded）</div>"+
-      "<div><b>credit %</b> — 自動計算：Cowork 實測 $ ＋ Code 估算 $（全時間）÷ config 的 credit 池。"+
-        "帳號整體 spend limit 本機量不到，<b>只有連外抓到才會顯示</b>（<code>-Cloud</code>），否則不出現</div>"+
+      "<div><b>額度／credit 區塊</b> — <b>已移除</b>：本機量不到真實 spent，估算過的版本被實測資料否證，"+
+        "故不顯示假數字。帳號整體 $ 只在連外抓到時才出現（<code>-Cloud</code>）</div>"+
       "<div>gauge 顏色：<span class='swatch' style='background:var(--good)'></span>&lt;50% "+
         "<span class='swatch' style='background:var(--warn)'></span>50–75% "+
         "<span class='swatch' style='background:var(--high)'></span>75–90% "+
@@ -821,7 +779,8 @@ __REFRESH_META__
       "<tr><td>By skill</td><td class='mono'>attributionSkill（無則 (no skill)）</td></tr>"+
       "<tr><td>By agent</td><td class='mono'>attributionAgent（主線=(main thread)，子代理=其類型；含 nested）</td></tr>"+
       "<tr><td>日期 / 每日</td><td class='mono'>timestamp（UTC → 換算 UTC+8）</td></tr>"+
-      "<tr><td>&asymp;$ 估算</td><td class='mono'>usage_limit.limit &divide; token_limit &times; tokens（來自 config，非帳單）</td></tr>"+
+      "<tr><td>Cowork $（真實）</td><td class='mono'>audit.jsonl 的 total_cost_usd（每個 result 一筆；<b>實測</b>）</td></tr>"+
+      "<tr><td>Cowork 聊天室名稱</td><td class='mono'>session sidecar local_&lt;uuid&gt;.json 的 title（cliSessionId 對應 audit session_id）</td></tr>"+
       "<tr><td>紀錄檔連結</td><td class='mono'>該 sessionId 的 .jsonl 檔路徑</td></tr>"+
       "</tbody>";
     card.appendChild(t);

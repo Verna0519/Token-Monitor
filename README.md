@@ -25,9 +25,32 @@
 | 區塊 | 資料來源 | 會自動更新嗎 |
 |------|----------|--------------|
 | Token usage（對話 / 專案 / skill / 每日曲線 / 近期列表） | 本機對話記錄，離線讀取 | ✅ 每次 `tokens` 或雙擊 `open-monitor.cmd` 都重抓當下資料 |
-| Cowork（per 聊天室 / 每日，**真實 $**） | 本機 Cowork `audit.jsonl` | ✅ 每次一併重抓（`cowork_report.py`） |
-| Claude Code and Cowork credit | **自動算**：Cowork 實測 $ ＋ Code 估算 $ | ✅ 每次更新；**算不出來就整塊不顯示** |
+| Cowork（per 聊天室 / 每日，**真實 $**） | 本機 Cowork `audit.jsonl` 的 `total_cost_usd` | ✅ 每次一併重抓（`cowork_report.py`）；**這是唯一實測的 $** |
+| ~~Claude Code and Cowork credit~~ | — | ❌ **已移除**（見下方「為何不顯示估算 $」） |
+| ~~Code 的 ≈$ 估算 / token 額度 %~~ | — | ❌ **已移除**（同上） |
 | Your usage limits（帳號整體 $ 花費） | 只有 Analytics API 有 | **只在 `-Cloud` 抓到時才顯示**；抓不到就**不出現**（不擺過期手填值） |
+
+### 為何不顯示估算 $（重要的誠實聲明）
+
+Claude Code 的 CLI transcript **沒有金額欄位**,所以任何「Code 花了多少 $」都只能靠一個
+**每-token 費率**去換算。先前版本用的費率是
+`usage_limit.limit ÷ token_limit`(= $150 ÷ 18.3 億 ≈ **$0.082/百萬 token**),但:
+
+1. 那個 `token_limit`(18.3 億)本身是**我用 7 天用量外推的假設**,所以
+   `rate = $150 ÷ token_limit` 只是**重複同一個假設**(循環推導),從未與真實帳單校驗。
+2. 後來 Cowork 提供了**真實 $ 與真實 token**,可反推實測費率:
+   `$236.83 ÷ 1.37 億 =` **$1.72/百萬 token** —— 和上面的假設**差約 21 倍**。
+
+既然唯一的實測基準否證了那個假設,**顯示它只會誤導**。因此(operator ruling)移除所有基於它的輸出:
+`≈$ this window`、每列 `≈$`、`of token limit %`、「本視窗估算花費/月額度」量表、以及需要 Code 估算的
+**credit 區塊**;`Usage over time` 的 y 軸也改回 **token**。
+
+**現在畫面上只留兩種數字:**
+- ✅ **實測 token**(Code:對話/專案/skill/agent/每日)
+- ✅ **實測真實 $**(僅 Cowork,來自 audit `total_cost_usd`)
+
+`%` 一律是「佔本視窗總量」的**實測佔比**,不再對照任何假設額度。`config` 的 `token_limit` 已設為
+`0`(關閉);除非你有**真正量到**的數字,否則別填回去。
 | Daily spend by product（真實每日 $） | Claude Enterprise Analytics API，**連外** | 只有設了 `ANALYTICS_API_KEY` 才有 |
 
 **看最新用量 = 一鍵、免溝通：** 雙擊 **`scripts\open-monitor.cmd`**（或 `. .\scripts\monitor.ps1; tokens`）
