@@ -275,7 +275,9 @@ __REFRESH_META__
     return verb+" <b>"+dateStr+"</b>"+(cd? (" &middot; 剩 "+cd) : " &middot; 已過");
   }
 
+  var GAUGED=false;                  // set when a gauge actually renders, so the legend can skip its key
   function gaugeRow(label, pct, subHtml, color){
+    GAUGED=true;
     var g=h("div","gauge");
     var head=h("div","gauge-head");
     head.appendChild(h("div","gauge-name", label));
@@ -419,29 +421,9 @@ __REFRESH_META__
     tiles.appendChild(tileEl("cache read", n(tot.cache_read_input_tokens)));
     tiles.appendChild(tileEl("assistant turns", n(tot.msgs)));
     card.appendChild(tiles);
-    // 總佔比 — this window's tokens as a share of what the credit pool buys, converted at OFFICIAL
-    // list prices using THIS window's own measured token mix (a list-price equivalence, not a bill).
-    var pool=(L.credit_pool_usd && Number(L.credit_pool_usd)>0)? Number(L.credit_pool_usd) : 0;
-    if(pool>0 && (T.by_model||[]).length && tot.total>0){
-      var cst=0, unk=0;
-      T.by_model.forEach(function(m){ var c=priceRow(m); if(c==null){ unk+=(m.total||0); } else { cst+=c; } });
-      if(cst>0){
-        var rateM=cst/tot.total;                 // $ per token, from measured mix
-        var poolTok=pool/rateM;                  // tokens that the pool buys at this mix
-        var shp=tot.total/poolTok*100;
-        var sub=n(tot.total)+" tokens / "+n(Math.round(poolTok))+" tokens（"+usd(pool)+
-          " 以本視窗實測組成 $"+(rateM*1e6).toFixed(4)+"／百萬 換算）&middot; 依官方牌價，<b>非帳單</b>";
-        card.appendChild(gaugeRow("總佔比 &mdash; 本視窗 tokens ÷ "+usd(pool)+" 可換 tokens",
-          Math.min(100,shp), sub, statusColor(Math.min(100,shp))));
-        card.appendChild(h("p","cap","實際比例 <b>"+shp.toFixed(1)+"%</b>"+(shp>100? "（已超過 100%）":"")+
-          "。換算隨 cache 佔比變動：cache_read 多則單價低、"+usd(pool)+" 能買到的 token 就多"+
-          "（你的兩邊實測：Code &asymp;$0.86／百萬、Cowork &asymp;$1.41／百萬 &rArr; "+usd(pool)+
-          " &asymp; <b>7～12 億 tokens</b>）。"+
-          (unk>0? " 有 "+n(unk)+" tokens 的 model 未知、未計價。":"")+
-          " <b>注意</b>：這是「牌價等值」而非你的實際帳單 —— 企業方案的實際計費可能不同"+
-          "（例如 Usage 頁顯示的 credit 已用比例若明顯低於此數，代表 Code 並非按牌價全額扣抵）。"));
-      }
-    }
+    // (A "總佔比 vs the credit pool" row was tried and REMOVED at operator request: converting
+    //  tokens to $ at list price implied a credit consumption that the Usage page contradicts —
+    //  enterprise billing evidently does not charge Code at full list price. Misleading > useful.)
     var grand=tot.total||0, top=8;
     var denom = grand;
     // per-conversation daily breakdown (click a chat to expand its day-by-day usage)
@@ -882,24 +864,31 @@ __REFRESH_META__
     var card=h("div","card");
     card.appendChild(h("h2","","欄位說明 (legend)"));
     var g=h("div","legend");
-    g.innerHTML=
-      "<div><b>total</b> — 該範圍全部 token（含快取，數字大屬正常）</div>"+
-      "<div><b>output</b>（列上標 <b>out</b>）— 模型實際生成的 token</div>"+
-      "<div><b>%</b> — 該列佔<b>本視窗總量</b>的比例（實測值的佔比）</div>"+
-      "<div><b>$</b> — <b>只有 Cowork 區塊有 $</b>（audit 實測真實花費）。Claude Code 區塊<b>不顯示 $</b>："+
-        "CLI 記錄沒有金額欄位，換算只會是假設</div>"+
-      "<div><b>cache read</b> — 每回合重讀的上下文（計費便宜）</div>"+
-      "<div><b>turns</b> — assistant 回合數</div>"+
-      "<div><b>By conversation</b> — 依<b>對話 (session)</b> 分組：一段 chat 的全部 token</div>"+
-      "<div><b>By project</b> — 依<b>工作目錄 (cwd)</b> 分組：同一個專案資料夾底下的 token</div>"+
-      "<div><b>By skill</b> — 依<b>當下啟用的 skill</b> 分組；沒掛 skill 的算 (no skill)。"+
-        "子代理 / workflow 目前<b>不計入</b>（nested excluded）</div>"+
-      "<div><b>額度／credit 區塊</b> — <b>已移除</b>：本機量不到真實 spent，估算過的版本被實測資料否證，"+
-        "故不顯示假數字。帳號整體 $ 只在連外抓到時才出現（<code>-Cloud</code>）</div>"+
-      "<div>gauge 顏色：<span class='swatch' style='background:var(--good)'></span>&lt;50% "+
+    // Only describe what this page actually shows — entries for absent features are noise.
+    var items=[
+      "<div><b>total</b> — 該範圍全部 token（含快取，數字大屬正常）</div>",
+      "<div><b>output</b>（列上標 <b>out</b>）— 模型實際生成的 token</div>",
+      "<div><b>cache read</b> — 每回合重讀的上下文（計價約新輸入的 1/10）</div>",
+      "<div><b>turns</b> — assistant 回合數</div>",
+      "<div><b>%</b> — 該列佔<b>本視窗總量</b>的比例（實測值的佔比）</div>",
+      "<div><b>$</b> — <b>Cowork</b> 的 $ 是 audit <b>實測真實花費</b>；<b>Code</b> 的 $ 是用"+
+        "<b>官方牌價 × 實測 token 組成</b>算出的（CLI 無金額欄位，故為計算值、非帳單）</div>",
+      "<div><b>By conversation</b> — 依<b>對話 <code>sessionId</code></b> 分組（名稱來自 "+
+        "<code>customTitle</code>／<code>aiTitle</code>）</div>",
+      "<div><b>By project</b> — 依<b>工作目錄 <code>cwd</code></b> 分組</div>",
+      "<div><b>By skill</b> — 依 <code>attributionSkill</code> 分組（該 skill 作用期間；無則 "+
+        "<code>(no skill)</code>）。<b>不含</b> nested</div>",
+      "<div><b>By agent</b> — 依 <code>attributionAgent</code> 分組（主線 <code>(main thread)</code> / "+
+        "子代理類型）。<b>唯一含</b> nested，故總量較大</div>",
+      "<div><b>各 model</b> — 依 <code>message.model</code>（Code）／<code>modelUsage</code>（Cowork）</div>"
+    ];
+    if(GAUGED){
+      items.push("<div>gauge 顏色：<span class='swatch' style='background:var(--good)'></span>&lt;50% "+
         "<span class='swatch' style='background:var(--warn)'></span>50–75% "+
         "<span class='swatch' style='background:var(--high)'></span>75–90% "+
-        "<span class='swatch' style='background:var(--critical)'></span>&ge;90%</div>";
+        "<span class='swatch' style='background:var(--critical)'></span>&ge;90%</div>");
+    }
+    g.innerHTML=items.join("");
     card.appendChild(g); app.appendChild(card);
   }
 
@@ -910,9 +899,11 @@ __REFRESH_META__
     g.innerHTML=
       "<div><b>要看最新資料</b> — 跑 <code>tokens</code>（或雙擊 <code>scripts\\open-monitor.cmd</code>）重新產生。"+
         "這是靜態快照，<b>在瀏覽器按 F5 不會更新</b>。</div>"+
-      "<div><b>時間範圍</b> — Usage over time 上方按鈕切 3 天 / 7 天 / 一個月（前端即時）。</div>"+
-      "<div><b>展開明細</b> — By conversation 每列點 <b>▸</b> 看該對話的每日用量，並可<b>開啟本機紀錄檔</b>（file 連結，只有在自己機器上開才點得動）。</div>"+
-      "<div><b>涵蓋範圍</b> — 只含本機 <b>Claude Code CLI</b> 記錄；Chat／Cowork 不在內（見上方黃色提示）。</div>";
+      "<div><b>時間範圍</b> — Usage over time 上方按鈕切 3 天 / 7 天 / 一個月（前端即時，預設 7 天）。</div>"+
+      "<div><b>展開明細</b> — 每列點 <b>▸</b>：對話看每日＋用到的 skill＋<b>開啟本機紀錄檔</b>；"+
+        "專案／skill／agent 看是<b>哪些對話</b>貢獻的。</div>"+
+      "<div><b>涵蓋範圍</b> — <b>Claude Code</b>（本機 CLI 記錄）＋<b>Cowork</b>（本機 audit，含真實 $）"+
+        "兩個獨立區塊；<b>Chat 不在內</b>（本機無紀錄，只有 claude.ai Usage 頁有）。</div>";
     card.appendChild(g);
     card.appendChild(h("div","sectlead","<b>每個數字抓自 transcript 的哪個欄位</b>（<code>~/.claude/projects/**/*.jsonl</code>）"));
     var t=h("table");
@@ -926,6 +917,8 @@ __REFRESH_META__
       "<tr><td>By skill</td><td class='mono'>attributionSkill（無則 (no skill)）</td></tr>"+
       "<tr><td>By agent</td><td class='mono'>attributionAgent（主線=(main thread)，子代理=其類型；含 nested）</td></tr>"+
       "<tr><td>日期 / 每日</td><td class='mono'>timestamp（UTC → 換算 UTC+8）</td></tr>"+
+      "<tr><td>各 model（Code）</td><td class='mono'>message.model</td></tr>"+
+      "<tr><td>Code $（計算值）</td><td class='mono'>官方牌價 × 各 model 的實測組成（<b>非帳單</b>；算法已用 Cowork 實帳驗證 0.7%）</td></tr>"+
       "<tr><td>Cowork $（真實）</td><td class='mono'>audit.jsonl 的 total_cost_usd（每個 result 一筆；<b>實測</b>）</td></tr>"+
       "<tr><td>Cowork 聊天室名稱</td><td class='mono'>session sidecar local_&lt;uuid&gt;.json 的 title（cliSessionId 對應 audit session_id）</td></tr>"+
       "<tr><td>紀錄檔連結</td><td class='mono'>該 sessionId 的 .jsonl 檔路徑</td></tr>"+
