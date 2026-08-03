@@ -87,6 +87,43 @@ def parse_local_dt(s, tz, end=False):
     return dt.replace(tzinfo=tz)
 
 
+def load_room_titles(root):
+    """Map audit session_id -> real chat-room title.
+
+    Each Cowork session has a sidecar `local_<uuid>.json` next to its folder carrying the
+    room's `title` plus `cliSessionId` — and it is cliSessionId (not sessionId) that matches
+    the `session_id` in audit.jsonl. Best-effort: unreadable/oversized sidecars are skipped.
+    """
+    titles = {}
+    try:
+        entries = os.listdir(root)
+    except OSError:
+        return titles
+    for install in entries:
+        idir = os.path.join(root, install)
+        if not os.path.isdir(idir):
+            continue
+        for org in os.listdir(idir) if os.path.isdir(idir) else []:
+            odir = os.path.join(idir, org)
+            if not os.path.isdir(odir):
+                continue
+            for name in os.listdir(odir):
+                if not (name.startswith("local_") and name.endswith(".json")):
+                    continue
+                p = os.path.join(odir, name)
+                try:
+                    d = json.load(open(p, encoding="utf-8", errors="replace"))
+                except (OSError, json.JSONDecodeError, ValueError):
+                    continue
+                if not isinstance(d, dict):
+                    continue
+                sid = d.get("cliSessionId")
+                title = d.get("title")
+                if sid and isinstance(title, str) and title.strip():
+                    titles[sid] = " ".join(title.split())[:70]
+    return titles
+
+
 def first_user_label(path):
     """A human-ish label for the chat room: first plain-text user message (skip file-upload markers)."""
     try:
@@ -217,15 +254,12 @@ def main():
                     by_day[day]["results"] += 1
                     room_day[sid][day]["cost"] += cost
                     room_day[sid][day]["total"] += toks
-        if path not in labels:
-            labels[path] = None
-        lbl = first_user_label(path)
-        # attach the label to whatever session id(s) that file produced (best-effort: last sid seen)
-        if lbl:
-            # associate with the room that this file most contributed to
-            pass
-
-    # attach labels: re-read to map file -> its session id, set label if room has none
+    # Room names: prefer the real title from the session sidecar (cliSessionId -> title);
+    # fall back to the first plain-text user message in that session's audit.
+    titles = load_room_titles(root)
+    for sid in by_room:
+        if titles.get(sid):
+            by_room[sid]["label"] = titles[sid]
     for path in audits:
         try:
             for raw in open(path, encoding="utf-8", errors="replace"):

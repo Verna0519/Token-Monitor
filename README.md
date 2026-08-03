@@ -25,8 +25,9 @@
 | 區塊 | 資料來源 | 會自動更新嗎 |
 |------|----------|--------------|
 | Token usage（對話 / 專案 / skill / 每日曲線 / 近期列表） | 本機對話記錄，離線讀取 | ✅ 每次 `tokens` 或雙擊 `open-monitor.cmd` 都重抓當下資料 |
-| Your usage limits（$ 花費額度） | `config/usage-limits.json`，**手動填** | ❌ 你改 config 才會變（除非開連外抓 $） |
-| Claude Code and Cowork credit | `config/usage-limits.json`，**手動填** | ❌ 同上 |
+| Cowork（per 聊天室 / 每日，**真實 $**） | 本機 Cowork `audit.jsonl` | ✅ 每次一併重抓（`cowork_report.py`） |
+| Claude Code and Cowork credit | **自動算**：Cowork 實測 $ ＋ Code 估算 $ | ✅ 每次更新；**算不出來就整塊不顯示** |
+| Your usage limits（帳號整體 $ 花費） | 只有 Analytics API 有 | **只在 `-Cloud` 抓到時才顯示**；抓不到就**不出現**（不擺過期手填值） |
 | Daily spend by product（真實每日 $） | Claude Enterprise Analytics API，**連外** | 只有設了 `ANALYTICS_API_KEY` 才有 |
 
 **看最新用量 = 一鍵、免溝通：** 雙擊 **`scripts\open-monitor.cmd`**（或 `. .\scripts\monitor.ps1; tokens`）

@@ -335,38 +335,29 @@ __REFRESH_META__
   }
 
   function renderLimits(){
-    // Section 1 — Your usage limits (a spend limit in currency; mirrors the Claude Usage page)
-    var c1=h("div","card");
-    c1.appendChild(h("h2","","Your usage limits" + (L.plan? "  <span class='chip'>"+L.plan+"</span>":"")));
+    // POLICY (operator ruling): only render a $ block that can actually be REFRESHED.
+    //   - "Your usage limits" (account spend): local-unmeasurable -> rendered ONLY when a real
+    //     spent was fetched via the Analytics API (-Cloud). Manual/stale values are NOT shown.
+    //   - "Claude Code and Cowork credit": rendered ONLY when it can be auto-computed from
+    //     measured local data (Cowork real $ + Code estimated $). The manual used_pct path is gone.
     var u=L.usage_limit||{}, cur=u.currency||"$";
     var fromCloud=(M.cloud && M.cloud.total_spent_usd!=null);
-    var spent=fromCloud ? M.cloud.total_spent_usd : u.spent;
-    var pct=pctOf(spent,u.limit);
-    var sub=(spent!=null&&u.limit!=null)
-      ? (cur+Number(spent).toLocaleString(undefined,{maximumFractionDigits:2})+" of "+
-         cur+Number(u.limit).toLocaleString(undefined,{maximumFractionDigits:2})+" spent"+
-         (fromCloud?" <span style='color:var(--series)'>(fetched)</span>":"")+
-         " &middot; "+whenInfo(u.resets,"resets"))
-      : "在 config/usage-limits.json 填 usage_limit.spent / limit / resets";
-    c1.appendChild(gaugeRow(u.label||"Spend limit", pct, sub, statusColor(pct==null?0:pct)));
-    var staleSpend = (!fromCloud) && (spent==null || Number(spent)===0);
-    c1.appendChild(h("p","cap", (fromCloud
-      ? "spent 由 Enterprise Analytics API 連外抓取；limit / resets 由 <code>config/usage-limits.json</code> 提供。"
-      : "spent <b>由你手填</b>（<code>config/usage-limits.json</code>）。加 <code>-Cloud</code> 可連外抓真實 spent（需 Analytics key）。")+
-      " 這裡的 $ 是<b>整個帳號、所有產品</b>（Chat + Cowork + Claude Code）；下方的 token 分析<b>只含 Claude Code CLI</b>，兩者範圍不同。"));
-    if(staleSpend){
-      c1.appendChild(h("div","scopenote",
-        "⚠️ <b>此數字本機無法量測</b> —— Chat 用量不寫進任何本機檔，這格只會是你手填的值（目前 "+
-        cur+Number(spent||0).toLocaleString()+"，看起來還沒更新）。要看真實已花多少，請上 "+
-        "<b>claude.ai &gt; Settings &gt; Usage</b> 查，再把數字填回 <code>config/usage-limits.json</code> 的 "+
-        "<code>usage_limit.spent</code>。（唯一能自動抓的 $ 是下方 Cowork 的實測值。）"));
+    if(fromCloud){
+      var c1=h("div","card");
+      c1.appendChild(h("h2","","Your usage limits" + (L.plan? "  <span class='chip'>"+L.plan+"</span>":"")));
+      var spent=M.cloud.total_spent_usd;
+      var pct=pctOf(spent,u.limit);
+      var sub=cur+Number(spent).toLocaleString(undefined,{maximumFractionDigits:2})+
+        (u.limit!=null? (" of "+cur+Number(u.limit).toLocaleString(undefined,{maximumFractionDigits:2})) : "")+
+        " spent <span style='color:var(--series)'>(fetched)</span>"+
+        (u.resets? (" &middot; "+whenInfo(u.resets,"resets")) : "");
+      c1.appendChild(gaugeRow(u.label||"Spend limit", pct, sub, statusColor(pct==null?0:pct)));
+      c1.appendChild(h("p","cap","spent 由 Enterprise Analytics API <b>連外抓取</b>（真實、全產品：Chat + Cowork + Code）；"+
+        "limit / resets 由 <code>config/usage-limits.json</code> 提供。下方 token 分析只含 Claude Code CLI，範圍不同。"));
+      c1.appendChild(fetchedLine());
+      app.appendChild(c1);
     }
-    c1.appendChild(fetchedLine());
-    app.appendChild(c1);
 
-    // Section 2 — Claude Code and Cowork credit (a one-time included credit that expires)
-    var c2=h("div","card");
-    c2.appendChild(h("h2","","Claude Code and Cowork credit"));
     var cr=L.credit||{};
     var pool=(cr.amount_usd && Number(cr.amount_usd)>0)? Number(cr.amount_usd) : 0;
     var cwLife=(CW && CW.available && CW.lifetime)? Number(CW.lifetime.cost_usd||0) : 0;
@@ -377,24 +368,17 @@ __REFRESH_META__
     var codeLifeTok=(T && T.lifetime && T.lifetime.total)? Number(T.lifetime.total) : 0;
     var codeLifeEst=(rateK>0 && codeLifeTok>0)? codeLifeTok*rateK : 0;
     var usedEst=cwLife+codeLifeEst;
-    var cpct, csub, capNote;
-    if(pool>0 && usedEst>0){
-      // AUTO, keyless: Cowork real $ (measured) + Code estimated $ — both draw on this credit
-      cpct=Math.min(100, usedEst/pool*100);
-      csub="&asymp;"+usd(usedEst)+" / "+usd(pool)+" 已用"+(cr.expires? (" &middot; "+whenInfo(cr.expires,"expires")) : "");
-      capNote="已用為<b>自動估算</b>（每次叫出更新）＝ <b>Cowork "+usd(cwLife)+"（實測真實 $）</b> ＋ "+
-        "<b>Code &asymp;"+usd(codeLifeEst)+"（估算</b>，CLI 記錄無 $ 欄位，以你的費率換算）"+
-        "，皆取<b>全時間</b>（credit 是到期制、不隨月重置）。池大小 "+usd(pool)+" 由 config 填；"+
-        "<b>Chat 不吃這個 credit</b>，故不計入。";
-    } else {
-      cpct=(cr.used_pct!=null)? Number(cr.used_pct) : pctOf(cr.used,cr.total);
-      csub=(cr.expires? whenInfo(cr.expires,"expires") : "expiry not set");
-      if(cpct==null) csub="在 config/usage-limits.json 填 credit.amount_usd + used_pct / expires";
-      capNote=cr.note||"";
-    }
-    if(capNote) c2.appendChild(h("p","cap", capNote));
-    c2.appendChild(gaugeRow(cr.label||"Included credit", cpct, csub, statusColor(cpct==null?0:cpct)));
-    c2.appendChild(fetchedLine());
+    if(!(pool>0 && usedEst>0)) return;   // cannot auto-compute -> omit the block entirely
+    var c2=h("div","card");
+    c2.appendChild(h("h2","","Claude Code and Cowork credit"));
+    var cpct=Math.min(100, usedEst/pool*100);
+    var csub="&asymp;"+usd(usedEst)+" / "+usd(pool)+" 已用"+(cr.expires? (" &middot; "+whenInfo(cr.expires,"expires")) : "");
+    c2.appendChild(h("p","cap",
+      "已用為<b>自動計算</b>（每次叫出更新）＝ <b>Cowork "+usd(cwLife)+"（實測真實 $）</b> ＋ "+
+      "<b>Code &asymp;"+usd(codeLifeEst)+"（估算</b>，CLI 記錄無 $ 欄位，以你的費率換算）"+
+      "，皆取<b>全時間</b>（credit 是到期制、不隨月重置）。池大小 "+usd(pool)+" 由 config 填；"+
+      "<b>Chat 不吃這個 credit</b>，故不計入。"));
+    c2.appendChild(gaugeRow(cr.label||"Included credit", cpct, csub, statusColor(cpct)));
     app.appendChild(c2);
   }
 
@@ -444,7 +428,7 @@ __REFRESH_META__
     var cur = (L.usage_limit && L.usage_limit.currency) || "$";
     var pctBasis = tlim > 0
       ? ("% = 佔 token_limit (" + tlim.toLocaleString() + ") 的比例 — 此為<b>自訂參考值</b>，"
-         + "方案的真實上限是上方的 $ 花費額度，Anthropic 並無官方 token 配額；在 config 可改")
+         + "方案的真實上限是 $ 花費額度（config <code>usage_limit.limit</code>），Anthropic 並無官方 token 配額；在 config 可改")
       : "% = 佔本視窗總量的比例（在 config 設 token_limit 可改為佔額度%）";
     var moneyBasis = rate > 0
       ? (" &middot; <b>"+cur+" 為估算</b>：以 "+cur+ulim.toLocaleString()+" 花費額度 &divide; token_limit 換算"
@@ -469,7 +453,7 @@ __REFRESH_META__
     if(rate>0 && ulim>0){
       var estSpend=tot.total*rate, spendPct=Math.min(100, estSpend/ulim*100);
       var sub="&asymp;"+usd(estSpend)+" / "+cur+ulim.toLocaleString()+" 月額度 &middot; 本視窗 token 換算的<b>估算</b>花費，"+
-        "非真實帳單（真實 spent 見最上方 Spend limit，或用 <code>-Cloud</code> 連外抓）";
+        "非真實帳單（真實 spent 只在 claude.ai Usage 頁，或用 <code>-Cloud</code> 連外抓）";
       card.appendChild(gaugeRow("本視窗估算花費 / 月額度 (est. spend vs monthly limit)", spendPct, sub, statusColor(spendPct)));
     }
     var grand=tot.total||0, top=8;
@@ -805,7 +789,8 @@ __REFRESH_META__
       "<div><b>By project</b> — 依<b>工作目錄 (cwd)</b> 分組：同一個專案資料夾底下的 token</div>"+
       "<div><b>By skill</b> — 依<b>當下啟用的 skill</b> 分組；沒掛 skill 的算 (no skill)。"+
         "子代理 / workflow 目前<b>不計入</b>（nested excluded）</div>"+
-      "<div><b>usage limit / credit %</b> — 對照 Claude Usage 頁、由你填入 config（非即時抓取）</div>"+
+      "<div><b>credit %</b> — 自動計算：Cowork 實測 $ ＋ Code 估算 $（全時間）÷ config 的 credit 池。"+
+        "帳號整體 spend limit 本機量不到，<b>只有連外抓到才會顯示</b>（<code>-Cloud</code>），否則不出現</div>"+
       "<div>gauge 顏色：<span class='swatch' style='background:var(--good)'></span>&lt;50% "+
         "<span class='swatch' style='background:var(--warn)'></span>50–75% "+
         "<span class='swatch' style='background:var(--high)'></span>75–90% "+
