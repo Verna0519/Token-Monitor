@@ -44,8 +44,25 @@ TOKKEYS = ["input_tokens", "output_tokens", "cache_creation_input_tokens", "cach
 _DATE_FMTS = ["%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%dT%H:%M", "%Y-%m-%d"]
 
 
+def cowork_default_roots():
+    """Per-OS default locations of the desktop app's Cowork (local agent mode) sessions dir.
+
+    Portability: the app's data dir differs by platform, so we probe the known candidates instead
+    of baking one path (RL2 — no machine-specific path in logic). First existing one wins.
+    """
+    home = os.path.expanduser("~")
+    appdata = os.environ.get("APPDATA") or os.path.join(home, "AppData", "Roaming")
+    return [
+        os.path.join(appdata, "Claude", "local-agent-mode-sessions"),                      # Windows
+        os.path.join(home, "Library", "Application Support", "Claude",
+                     "local-agent-mode-sessions"),                                          # macOS
+        os.path.join(home, ".config", "Claude", "local-agent-mode-sessions"),               # Linux
+        os.path.join(home, ".claude", "local-agent-mode-sessions"),                         # fallback
+    ]
+
+
 def resolve_cowork_root():
-    """COWORK_SESSIONS_ROOT from path-mappings.filled.yaml if set; else the OS default. May be None."""
+    """COWORK_SESSIONS_ROOT from path-mappings.filled.yaml if set; else the first existing OS default."""
     if os.path.isfile(FILLED):
         try:
             for line in open(FILLED, encoding="utf-8"):
@@ -56,8 +73,11 @@ def resolve_cowork_root():
                         return os.path.expanduser(os.path.expandvars(v))
         except OSError:
             pass
-    default = os.path.expanduser(os.path.join("~", "AppData", "Roaming", "Claude", "local-agent-mode-sessions"))
-    return default
+    cands = cowork_default_roots()
+    for c in cands:
+        if os.path.isdir(c):
+            return c
+    return cands[0]   # report the platform-primary one in the "not found" message
 
 
 def parse_ts(ts):

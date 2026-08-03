@@ -1,21 +1,19 @@
 {
-  "_README": "Copy to config/usage-limits.json (private, gitignored) and fill from your Claude Settings > Usage page. Mirrors that page: 'usage_limit' = the spend limit that RESETS; 'credit' = the one-time Claude Code & Cowork credit that EXPIRES. The dashboard shows these values; it does NOT fetch real-time server quota (air-gapped, RL1). 'operator' + 'window' are for the local token analysis below the limits. 'token_limit' is a SELF-SET reference denominator for the token % (there is no official Anthropic token quota — the real cap is the $ spend limit above); set it near your typical usage over the 'window' (e.g. 500000000) so the gauge is meaningful, or 0 to show '% of window total' instead.",
+  "_README": "Copy to config/usage-limits.json (private, gitignored). MOST OF THE DASHBOARD NEEDS NOTHING HERE: Claude Code token usage is measured from your local transcripts, and Cowork's REAL $ is measured from its local audit.jsonl — both work out of the box. This file only supplies (a) 'operator' = the name shown in the header, (b) 'window' = the default reporting period, and (c) OPTIONAL 'usage_limit.limit/resets' labels used ONLY when you fetch real spend with -Cloud (needs ANALYTICS_API_KEY). No $ is invented from these values.",
   "operator": "<your name>",
   "plan": "<your plan, e.g. Enterprise / Max / Pro>",
+
+  "_note_usage_limit": "Only used when a REAL spent is fetched via -Cloud (Analytics API). Without that fetch the whole block is NOT rendered — the dashboard never shows a stale hand-typed $ as if it were current.",
   "usage_limit": {
     "label": "Spend limit",
     "currency": "$",
-    "spent": 0,
     "limit": 0,
     "resets": null
   },
-  "credit": {
-    "label": "Included credit",
-    "used_pct": null,
-    "expires": null,
-    "note": "A one-time credit for Claude Code and Cowork, applied before your usage limits. After it's used up, both features draw from your normal usage."
-  },
+
+  "_note_token_limit": "0 = OFF, and OFF is correct. There is no official Anthropic token quota, and deriving a $-per-token rate from a made-up token_limit produced numbers that measured data contradicted by ~21x — so all estimated-$ output was removed. Only set this if you have a REAL, measured figure.",
   "token_limit": 0,
+
   "analytics_user_id": null,
   "window": { "mode": "days", "days": 30, "since": null, "until": null }
 }

@@ -303,13 +303,32 @@ Get-TokenReport -Days 7             # 純文字表格
 ## 分享給其他人
 
 這個 repo 可以安全分享 —— 所有個資都在 gitignored 檔案裡，隨附的只有 `*.template.json` /
-`.env.template` 佔位檔。收到的人 clone 之後填自己的：
+`.env.template` 佔位檔。**收件人只需一個指令就能抓到自己的數值**（已用全新 clone 實測驗證）：
 
 ```powershell
-Copy-Item config\usage-limits.template.json config\usage-limits.json   # 你的方案數字 / token_limit
-Copy-Item .env.template .env                                           # 選用：ANALYTICS_API_KEY
+git clone https://github.com/Verna0519/Token-Monitor.git
+cd Token-Monitor
+
+# 唯一必要的設定：告訴它你的 Claude Code 對話記錄在哪（Windows/macOS/Linux 都是這個位置）
+python scripts\onboard.py --projects-root "$HOME\.claude\projects"
+
 . .\scripts\monitor.ps1 ; tokens
 ```
+
+**收件人會拿到什麼（不用填任何數字）：**
+
+| 區塊 | 需要設定嗎 | 說明 |
+|------|-----------|------|
+| Claude Code token（對話／專案／skill／agent／每日） | 只需上面那行 `onboard` | 讀他自己的 `~/.claude/projects` |
+| **Cowork 真實 $**（per 聊天室＋每日） | **完全零設定** | 自動偵測桌面 App 的 Cowork 資料夾（Windows／macOS／Linux 各自的預設路徑都會探測）；沒裝 Cowork 就自動略過該區塊 |
+| `operator` 名字、預設時間範圍 | 選用 | `Copy-Item config\usage-limits.template.json config\usage-limits.json` 後填 |
+| 帳號整體 $ 花費 | 需 Analytics key | 沒 key 就**不顯示**（不會出現假數字） |
+
+**設計保證：** 儀表板**只顯示量得到的數字**。收件人不填任何 $，畫面也不會憑空生出金額 ——
+沒資料的區塊直接不出現。`token_limit` 預設 `0`（關閉），不會產生估算 $。
+
+> 若對話記錄不在預設位置，`token_report.py` 會**大聲失敗**並告訴你要設 `CLAUDE_PROJECTS_ROOT`
+> （RL2 契約：絕不靜默略過）。Cowork 路徑要覆寫則設 `COWORK_SESSIONS_ROOT`。
 
 ---
 
@@ -369,6 +388,32 @@ App 的本機 **`local-agent-mode-sessions/**/audit.jsonl`**(由 `scripts/cowork
   本機);**不進**能力座標 / 萃取管線(那條維持 Claude Code CLI only)。
 
 打 `tokens` 時會一併重算 Cowork(`cowork_report.py` 已接進儀表板產生流程)。
+
+### Cowork $ 的準確性驗證(為什麼可以信)
+
+Cowork 的 $ 不是估算 —— 我用**官方牌價逐筆重算**與 audit 記錄比對:
+
+| | 金額 |
+|---|---|
+| audit `total_cost_usd` 加總 | **$236.83** |
+| 依官方牌價重算 | **$236.80** |
+| **差異** | **0.01%** |
+
+重算方式:每筆 `result` 的 `modelUsage` 逐 model 套官方價
+(例 Opus:input \$5、output \$25、cache_read \$0.50、**cache_write \$10 = 1 小時 TTL 價**／百萬 token)。
+必須用 1h TTL 的快取寫入價才能完全對上 —— 這反證了 audit 的金額是**真實帳**。
+
+**Token 組成**(說明為何單價看起來低):
+
+| 類型 | 佔比 |
+|---|---|
+| `cache_read`(每回合重讀上下文,最便宜) | **91.5%** |
+| `cache_creation`(寫入快取,較貴) | 7.8% |
+| `output`(模型生成,最貴) | 0.7% |
+| `input` | 0.03% |
+
+混合單價約 **$1.40／百萬 token**;各 model 實測:Opus 4.8 \$1.41、Sonnet 5 \$1.10、Sonnet 4.6 \$0.60、Haiku 4.5 \$1.84。
+**口徑一致性**:token 數與 $ 都取自 `modelUsage`(比頂層 `usage` 多約 21%,因為含子代理回合)。
 
 **自動帶入 credit 已用:** 上方「Claude Code and Cowork credit」那格,若 config 設了
 `credit.amount_usd`(例如 $1000 池),會**自動**算出已用(每次叫出更新)——因為這個 credit **同時**
